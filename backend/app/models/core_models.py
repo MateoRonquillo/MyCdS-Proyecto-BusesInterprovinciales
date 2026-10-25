@@ -9,6 +9,7 @@ class Usuario(Base):
     correo = Column(String(100), unique=True, index=True, nullable=False)
     cedula = Column(String(15), unique=True, nullable=False)
     rol = Column(String(50), nullable=False)
+    password_hash = Column(String(255), nullable=True)
     activo = Column(Boolean, default=True)
 
 class Cooperativa(Base):

@@ -1,17 +1,26 @@
-name: CI - Backend
+name: Pruebas y compilacion
+
 on:
   pull_request:
     branches:
       - develop
     paths:
       - "backend/**"
+      - "frontend/**"
+      - "compose.yaml"
+      - ".env.example"
       - ".github/workflows/ci.yml"
+
   push:
     branches:
       - develop
     paths:
       - "backend/**"
+      - "frontend/**"
+      - "compose.yaml"
+      - ".env.example"
       - ".github/workflows/ci.yml"
+
   workflow_dispatch:
 
 permissions:
@@ -21,9 +30,11 @@ jobs:
   backend-tests:
     name: Pruebas del backend
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
+
     steps:
       - name: Descargar el repositorio
         uses: actions/checkout@v4
@@ -42,3 +53,44 @@ jobs:
 
       - name: Ejecutar pruebas
         run: python -m pytest -v
+        env:
+          DATABASE_URL: sqlite://
+
+  frontend-build:
+    name: Compilacion del frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Compilar frontend
+        run: npm run build
+
+  staging-check:
+    name: Verificacion de infraestructura
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Validar configuracion Docker Compose
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Construir imagen del backend
+        run: docker compose --env-file .env.example build backend
