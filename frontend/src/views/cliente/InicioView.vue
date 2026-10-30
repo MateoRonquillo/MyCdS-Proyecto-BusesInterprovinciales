@@ -39,7 +39,6 @@ function buscar() {
           <button class="search-submit" type="submit">Buscar viajes <span aria-hidden="true">→</span></button>
         </form>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-        <p class="search-note">* La consulta de viajes se conectará al servicio de búsqueda en una etapa posterior.</p>
       </div>
     </section>
 
