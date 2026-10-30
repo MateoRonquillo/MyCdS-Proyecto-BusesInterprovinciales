@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time
 from app.db.database import Base
 
 class Usuario(Base):
@@ -19,3 +19,32 @@ class Cooperativa(Base):
     nombre = Column(String(100), unique=True, nullable=False)
     logo_url = Column(String(255), nullable=True)
     color_principal = Column(String(7), nullable=True)
+    
+class Bus(Base):
+    __tablename__ = "buses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    placa = Column(String(20), unique=True, nullable=False)
+    numero_disco = Column(String(10), nullable=False)
+    capacidad_asientos = Column(Integer, nullable=False)
+    cooperativa_id = Column(Integer, ForeignKey("cooperativas.id"), nullable=False)
+    activo = Column(Boolean, default=True)
+
+class Ruta(Base):
+    __tablename__ = "rutas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    origen = Column(String(100), nullable=False)
+    destino = Column(String(100), nullable=False)
+    duracion_estimada_horas = Column(Float, nullable=False)
+    activo = Column(Boolean, default=True)
+
+class Frecuencia(Base):
+    __tablename__ = "frecuencias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ruta_id = Column(Integer, ForeignKey("rutas.id"), nullable=False)
+    bus_id = Column(Integer, ForeignKey("buses.id"), nullable=False)
+    hora_salida = Column(Time, nullable=False)
+    precio = Column(Float, nullable=False)
+    activo = Column(Boolean, default=True)
