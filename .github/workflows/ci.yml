@@ -52,9 +52,18 @@ jobs:
           pip install -r requirements.txt
 
       - name: Ejecutar pruebas
-        run: python -m pytest -v
+        run: python -m pytest -v --junitxml=reports/pytest.xml
         env:
           DATABASE_URL: sqlite://
+
+      - name: Guardar reporte de pruebas
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas-backend
+          path: backend/reports/pytest.xml
+          if-no-files-found: error
+          retention-days: 30
 
   frontend-build:
     name: Compilacion del frontend
