@@ -57,5 +57,8 @@ class Reserva(Base):
     frecuencia_id = Column(Integer, ForeignKey("frecuencias.id"), nullable=False, index=True)
     fecha_viaje = Column(Date, nullable=False)
     asiento = Column(Integer, nullable=False)
+    tipo_pasajero = Column(
+        String(30), nullable=False, default="GENERAL", server_default="GENERAL"
+    )
     precio = Column(Float, nullable=False)
     estado = Column(String(30), nullable=False, default="PENDIENTE")

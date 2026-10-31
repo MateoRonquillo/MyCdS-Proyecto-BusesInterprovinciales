@@ -53,12 +53,24 @@ Una cancelación conserva el registro y libera el asiento.
 
 ## Cálculo de tarifas
 
-`POST /api/v1/tarifas/calcular` requiere autenticación y recibe
-`frecuencia_id` y `cantidad_pasajeros` (de 1 a 10). Responde con el precio
-unitario, subtotal y total en USD, redondeados a dos decimales. El importe se
-calcula con la tarifa activa de la frecuencia (`precio × cantidad`); no se
-aplican cargos ni descuentos porque aún no hay reglas configuradas. La reserva
-individual guarda el mismo precio unitario calculado al momento de crearla.
+`POST /api/v1/tarifas/calcular` requiere autenticación. Recibe `frecuencia_id`
+y, opcionalmente, `cantidad_pasajeros` (de 1 a 10) para tarifa general o una
+lista `tipos_pasajero` de 1 a 10 elementos. Los tipos son `GENERAL`,
+`ADULTO_MAYOR`, `DISCAPACIDAD`, `NINO_ADOLESCENTE` y `ESTUDIANTE`. No se pueden
+enviar ambos campos de pasajeros a la vez. La respuesta incluye el desglose por pasajero,
+precio unitario, descuento acumulado, subtotal y total en USD, redondeados a
+dos decimales. Los tipos preferenciales reciben un descuento del 50%; la tarifa
+general no recibe descuento. El descuento estudiantil queda sujeto a la
+acreditación y condiciones vigentes. Al crear una reserva se puede enviar
+`tipo_pasajero`; se guarda la categoría y el precio resultante como valor
+histórico. La documentación legal y los requisitos de elegibilidad deben
+validarse en el proceso de venta.
+
+El [Reglamento a la Ley de Transporte Terrestre, artículo 46](https://www.gob.ec/sites/default/files/regulations/2019-12/REGLAMENTO_A_LA_LEY_DE_TRANSPORTE_TERRESTRE_TRANSITO_Y_SEGURIDAD_VIAL.pdf)
+establece la tarifa del 50% para discapacidad, estudiantes de básica y
+bachillerato bajo ciertas condiciones, niñas, niños, adolescentes y mayores de
+65 años. La [Ley Orgánica de las Personas con Discapacidad, artículo 87](https://www.asambleanacional.gob.ec/es/system/files/ley_organica_de_discapacidades.pdf)
+también reconoce la tarifa preferencial del 50% para transporte terrestre.
 
 ## Errores
 

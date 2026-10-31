@@ -9,7 +9,7 @@ from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import Bus, Frecuencia, Reserva, Usuario
 from app.schemas.reservas import ReservaCreate, ReservaResponse, ReservaUpdate
-from app.services.tarifas import calcular_importe
+from app.services.tarifas import calcular_pasajero
 
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
@@ -66,12 +66,15 @@ def create_reservation(
     if frequency is None or not frequency.activo:
         raise HTTPException(status_code=404, detail="Frecuencia no encontrada o inactiva")
     _check_seat(db, frequency, payload.fecha_viaje, payload.asiento)
+    passenger_type = payload.tipo_pasajero
+    _, _, amount = calcular_pasajero(frequency.precio, passenger_type)
     reservation = Reserva(
         usuario_id=user.id,
         frecuencia_id=frequency.id,
         fecha_viaje=payload.fecha_viaje,
         asiento=payload.asiento,
-        precio=float(calcular_importe(frequency.precio, 1)[0]),
+        tipo_pasajero=passenger_type.value,
+        precio=float(amount),
         estado="PENDIENTE",
     )
     db.add(reservation)

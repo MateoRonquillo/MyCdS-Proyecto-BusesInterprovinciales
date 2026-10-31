@@ -2,11 +2,14 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.services.tarifas import TipoPasajero
+
 
 class ReservaCreate(BaseModel):
     frecuencia_id: int = Field(gt=0)
     fecha_viaje: date
     asiento: int = Field(gt=0)
+    tipo_pasajero: TipoPasajero = TipoPasajero.GENERAL
 
 
 class ReservaUpdate(BaseModel):
@@ -21,5 +24,6 @@ class ReservaResponse(BaseModel):
     frecuencia_id: int
     fecha_viaje: date
     asiento: int
+    tipo_pasajero: TipoPasajero
     precio: float
     estado: str
