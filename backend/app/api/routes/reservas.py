@@ -1,6 +1,6 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,13 @@ from app.api.dependencies import get_current_user
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import Bus, Frecuencia, Reserva, Usuario
-from app.schemas.reservas import ReservaCreate, ReservaResponse, ReservaUpdate
+from app.schemas.reservas import (
+    AsientoEstado,
+    DisponibilidadAsientosResponse,
+    ReservaCreate,
+    ReservaResponse,
+    ReservaUpdate,
+)
 from app.services.tarifas import calcular_pasajero
 
 router = APIRouter(prefix="/reservas", tags=["reservas"])
@@ -48,7 +54,46 @@ def _check_seat(
     if db.scalar(query) is not None:
         raise HTTPException(status_code=409, detail="El asiento ya está reservado para este viaje")
 
+@router.get(
+    "/disponibilidad/{frequency_id}",
+    response_model=DisponibilidadAsientosResponse,
+    summary="Consultar disponibilidad y mapa de asientos de un viaje",
+)
+def get_seat_availability(
+    frequency_id: int,
+    fecha: date = Query(..., description="Fecha del viaje a consultar (YYYY-MM-DD)"),
+    db: Session = Depends(get_db),
+) -> DisponibilidadAsientosResponse:
+    frequency = db.get(Frecuencia, frequency_id)
+    if frequency is None or not frequency.activo:
+        raise HTTPException(status_code=404, detail="Frecuencia no encontrada o inactiva")
 
+    bus = db.get(Bus, frequency.bus_id)
+    if bus is None or not bus.activo:
+        raise HTTPException(status_code=409, detail="El bus asignado a la frecuencia no está disponible")
+
+    # Consultar los números de asientos ocupados para esa fecha (excluyendo canceladas)
+    query = select(Reserva.asiento).where(
+        Reserva.frecuencia_id == frequency.id,
+        Reserva.fecha_viaje == fecha,
+        Reserva.estado != "CANCELADA",
+    )
+    occupied_seats = sorted(list(db.scalars(query)))
+    all_seats = list(range(1, bus.capacidad_asientos + 1))
+    available_seats = [s for s in all_seats if s not in occupied_seats]
+    seat_map = [
+        AsientoEstado(numero=s, ocupado=(s in occupied_seats))
+        for s in all_seats
+    ]
+
+    return DisponibilidadAsientosResponse(
+        frecuencia_id=frequency.id,
+        fecha_viaje=fecha,
+        capacidad_total=bus.capacidad_asientos,
+        asientos_ocupados=occupied_seats,
+        asientos_disponibles=available_seats,
+        mapa_asientos=seat_map,
+    )
 @router.post(
     "",
     response_model=ReservaResponse,

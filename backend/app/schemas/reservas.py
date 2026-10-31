@@ -27,3 +27,16 @@ class ReservaResponse(BaseModel):
     tipo_pasajero: TipoPasajero
     precio: float
     estado: str
+
+class AsientoEstado(BaseModel):
+    numero: int
+    ocupado: bool
+
+
+class DisponibilidadAsientosResponse(BaseModel):
+    frecuencia_id: int
+    fecha_viaje: date
+    capacidad_total: int
+    asientos_ocupados: list[int]
+    asientos_disponibles: list[int]
+    mapa_asientos: list[AsientoEstado]
