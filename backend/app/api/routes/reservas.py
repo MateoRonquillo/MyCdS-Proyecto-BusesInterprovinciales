@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 
 from app.api.dependencies import get_current_user
 from app.core.roles import Role, normalize_role
@@ -123,10 +124,16 @@ def create_reservation(
         estado="PENDIENTE",
     )
     db.add(reservation)
-    db.commit()
-    db.refresh(reservation)
+    try:
+        db.commit()
+        db.refresh(reservation)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El asiento ya está reservado para este viaje",
+        )
     return reservation
-
 
 @router.get("", response_model=list[ReservaResponse], summary="Listar reservas")
 def list_reservations(
@@ -167,8 +174,15 @@ def update_reservation(
         raise HTTPException(status_code=409, detail="La frecuencia ya no está disponible")
     _check_seat(db, frequency, reservation.fecha_viaje, payload.asiento, exclude_id=reservation.id)
     reservation.asiento = payload.asiento
-    db.commit()
-    db.refresh(reservation)
+    try:
+        db.commit()
+        db.refresh(reservation)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El asiento ya está reservado para este viaje",
+        )
     return reservation
 
 
