@@ -33,6 +33,24 @@ Respuesta `200`:
 }
 ```
 
+## Reservas
+
+Los endpoints de reservas requieren un token Bearer. Los clientes solo pueden
+consultar y modificar sus propias reservas; los administradores y oficinistas
+pueden consultar todas. La creación recibe `frecuencia_id`, `fecha_viaje` (ISO
+`YYYY-MM-DD`) y `asiento`; el usuario autenticado y el precio vigente de la
+frecuencia se asignan en el servidor.
+
+- `POST /api/v1/reservas`: crear una reserva pendiente (`201`).
+- `GET /api/v1/reservas`: listar reservas permitidas para el usuario.
+- `GET /api/v1/reservas/{id}`: consultar una reserva.
+- `PUT /api/v1/reservas/{id}`: cambiar el asiento de una reserva pendiente.
+- `DELETE /api/v1/reservas/{id}`: cancelar una reserva pendiente (`204`).
+
+La API rechaza frecuencias inactivas, fechas pasadas, asientos fuera de la
+capacidad del bus y asientos ya ocupados para la misma frecuencia y fecha.
+Una cancelación conserva el registro y libera el asiento.
+
 ## Errores
 
 Los errores HTTP se devuelven con el estado original y un cuerpo `error` que

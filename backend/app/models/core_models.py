@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date
 from app.db.database import Base
 
 class Usuario(Base):
@@ -48,3 +48,14 @@ class Frecuencia(Base):
     hora_salida = Column(Time, nullable=False)
     precio = Column(Float, nullable=False)
     activo = Column(Boolean, default=True)
+
+class Reserva(Base):
+    __tablename__ = "reservas"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
+    frecuencia_id = Column(Integer, ForeignKey("frecuencias.id"), nullable=False, index=True)
+    fecha_viaje = Column(Date, nullable=False)
+    asiento = Column(Integer, nullable=False)
+    precio = Column(Float, nullable=False)
+    estado = Column(String(30), nullable=False, default="PENDIENTE")
