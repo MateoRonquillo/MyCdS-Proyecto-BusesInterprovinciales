@@ -51,6 +51,15 @@ La API rechaza frecuencias inactivas, fechas pasadas, asientos fuera de la
 capacidad del bus y asientos ya ocupados para la misma frecuencia y fecha.
 Una cancelación conserva el registro y libera el asiento.
 
+## Cálculo de tarifas
+
+`POST /api/v1/tarifas/calcular` requiere autenticación y recibe
+`frecuencia_id` y `cantidad_pasajeros` (de 1 a 10). Responde con el precio
+unitario, subtotal y total en USD, redondeados a dos decimales. El importe se
+calcula con la tarifa activa de la frecuencia (`precio × cantidad`); no se
+aplican cargos ni descuentos porque aún no hay reglas configuradas. La reserva
+individual guarda el mismo precio unitario calculado al momento de crearla.
+
 ## Errores
 
 Los errores HTTP se devuelven con el estado original y un cuerpo `error` que

@@ -9,6 +9,7 @@ from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import Bus, Frecuencia, Reserva, Usuario
 from app.schemas.reservas import ReservaCreate, ReservaResponse, ReservaUpdate
+from app.services.tarifas import calcular_importe
 
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
@@ -70,7 +71,7 @@ def create_reservation(
         frecuencia_id=frequency.id,
         fecha_viaje=payload.fecha_viaje,
         asiento=payload.asiento,
-        precio=frequency.precio,
+        precio=float(calcular_importe(frequency.precio, 1)[0]),
         estado="PENDIENTE",
     )
     db.add(reservation)
