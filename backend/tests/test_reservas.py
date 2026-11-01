@@ -107,3 +107,38 @@ def test_disponibilidad_y_prevencion_doble_asignacion_asiento(reserva_client: Te
     data_after = disp_after.json()
     assert 4 in data_after["asientos_ocupados"]
     assert 4 not in data_after["asientos_disponibles"]
+
+def test_asiento_cancelado_puede_reservarse_nuevamente(
+    reserva_client: TestClient,
+):
+    fecha = (date.today() + timedelta(days=3)).isoformat()
+
+    payload = {
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 5,
+        "tipo_pasajero": "GENERAL",
+    }
+
+    primera = reserva_client.post(
+        "/api/v1/reservas", json=payload
+    )
+    assert primera.status_code == 201
+
+    reserva_id = primera.json()["id"]
+
+    cancelacion = reserva_client.delete(
+        f"/api/v1/reservas/{reserva_id}"
+    )
+    assert cancelacion.status_code == 204
+
+    disponibilidad = reserva_client.get(
+        f"/api/v1/reservas/disponibilidad/1?fecha={fecha}"
+    )
+    assert disponibilidad.status_code == 200
+    assert 5 in disponibilidad.json()["asientos_disponibles"]
+
+    segunda = reserva_client.post(
+        "/api/v1/reservas", json=payload
+    )
+    assert segunda.status_code == 201

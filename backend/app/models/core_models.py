@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, UniqueConstraint, Computed
 from app.db.database import Base
 
 class Usuario(Base):
@@ -49,14 +49,15 @@ class Frecuencia(Base):
     precio = Column(Float, nullable=False)
     activo = Column(Boolean, default=True)
 
+
 class Reserva(Base):
     __tablename__ = "reservas"
     __table_args__ = (
         UniqueConstraint(
             "frecuencia_id",
             "fecha_viaje",
-            "asiento",
-            name="uq_reserva_frecuencia_fecha_asiento",
+            "asiento_activo",
+            name="uq_reserva_asiento_activo",
         ),
     )
 
@@ -70,3 +71,13 @@ class Reserva(Base):
     )
     precio = Column(Float, nullable=False)
     estado = Column(String(30), nullable=False, default="PENDIENTE")
+
+    asiento_activo = Column(
+        Integer,
+        Computed(
+            "CASE WHEN estado = 'CANCELADA' THEN NULL ELSE asiento END",
+            persisted=True,
+        ),
+        nullable=True,
+    )
+
