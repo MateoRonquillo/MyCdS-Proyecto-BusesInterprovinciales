@@ -97,3 +97,38 @@ permite conservar los resultados en el repositorio.
   su finalización; el XML no es un registro completo de ellas.
 - Queda pendiente vincular la solicitud de cambio y completar
   las dos revisiones del PR.
+
+
+## Ampliación de pruebas de integración
+
+Se integraron los cambios de los módulos de buses,
+frecuencias, reservas, disponibilidad y tarifas.
+
+Se incorporaron pruebas para comprobar:
+
+- Cancelación y reutilización de asientos.
+- Cálculo de tarifas generales y preferenciales.
+- Restricción de acceso a reservas de otros usuarios.
+
+### Validación de MySQL
+
+Se aplicó la migración a6c4e2b8d901 en MySQL 8.0.
+
+Se verificó que:
+
+- Una reserva activa impide duplicar el mismo asiento.
+- MySQL rechaza la duplicidad mediante el error 1062.
+- Una reserva cancelada libera el asiento.
+- El asiento liberado puede reservarse nuevamente.
+
+Las operaciones de comprobación se realizaron dentro
+de una transacción y se finalizaron con ROLLBACK.
+
+### Limitaciones
+
+Las pruebas automatizadas se ejecutaron utilizando SQLite.
+La migración y la restricción se comprobaron manualmente
+en MySQL.
+
+No se realizó una prueba automatizada de concurrencia
+con múltiples solicitudes simultáneas.
