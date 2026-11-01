@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, UniqueConstraint
 from app.db.database import Base
 
 class Usuario(Base):
@@ -51,6 +51,14 @@ class Frecuencia(Base):
 
 class Reserva(Base):
     __tablename__ = "reservas"
+    __table_args__ = (
+        UniqueConstraint(
+            "frecuencia_id",
+            "fecha_viaje",
+            "asiento",
+            name="uq_reserva_frecuencia_fecha_asiento",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
