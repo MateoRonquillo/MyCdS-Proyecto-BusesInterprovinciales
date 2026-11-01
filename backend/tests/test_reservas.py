@@ -142,3 +142,81 @@ def test_asiento_cancelado_puede_reservarse_nuevamente(
         "/api/v1/reservas", json=payload
     )
     assert segunda.status_code == 201
+
+
+def test_calculo_tarifas_general_y_preferencial(
+    reserva_client: TestClient,
+):
+    general = reserva_client.post(
+        "/api/v1/tarifas/calcular",
+        json={
+            "frecuencia_id": 1,
+            "cantidad_pasajeros": 2,
+        },
+    )
+
+    assert general.status_code == 200
+    assert general.json()["subtotal"] == 25.00
+    assert general.json()["total"] == 25.00
+    assert general.json()["descuento_total"] == 0
+
+    preferencial = reserva_client.post(
+        "/api/v1/tarifas/calcular",
+        json={
+            "frecuencia_id": 1,
+            "tipos_pasajero": [
+                "GENERAL",
+                "ADULTO_MAYOR",
+            ],
+        },
+    )
+
+    assert preferencial.status_code == 200
+    assert preferencial.json()["subtotal"] == 25.00
+    assert preferencial.json()["descuento_total"] == 6.25
+    assert preferencial.json()["total"] == 18.75
+
+
+def test_cliente_no_puede_consultar_reserva_ajena(
+    reserva_client: TestClient,
+):
+    from app.models.core_models import Reserva
+
+    fecha = (date.today() + timedelta(days=4)).isoformat()
+
+    respuesta = reserva_client.post(
+        "/api/v1/reservas",
+        json={
+            "frecuencia_id": 1,
+            "fecha_viaje": fecha,
+            "asiento": 6,
+            "tipo_pasajero": "GENERAL",
+        },
+    )
+
+    assert respuesta.status_code == 201
+    reserva_id = respuesta.json()["id"]
+
+    def otro_usuario():
+        return Usuario(
+            id=999,
+            nombre="Otro cliente",
+            correo="otro@test.com",
+            cedula="9999999999",
+            rol="cliente",
+            activo=True,
+        )
+
+    app = reserva_client.app
+    anterior = app.dependency_overrides[get_current_user]
+
+    try:
+        app.dependency_overrides[get_current_user] = otro_usuario
+
+        consulta = reserva_client.get(
+            f"/api/v1/reservas/{reserva_id}"
+        )
+
+        assert consulta.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = anterior
