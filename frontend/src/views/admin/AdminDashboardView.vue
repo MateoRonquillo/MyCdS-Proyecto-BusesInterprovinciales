@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import AdminSidebar from '../../components/admin/AdminSidebar.vue'
 
 const modulosAdmin = ref([
@@ -8,22 +9,22 @@ const modulosAdmin = ref([
     titulo: 'Cooperativas',
     descripcion: 'Registro, edición y estado activo/inactivo de cooperativas interprovinciales.',
     ruta: '/admin/cooperativas',
-    estado: 'Estructura inicial'
+    estado: 'Operativo',
   },
   {
     id: 'M03',
     titulo: 'Buses y Plantillas',
     descripcion: 'Gestión de unidades, asociación a cooperativas y configuración de asientos.',
     ruta: '/admin/buses',
-    estado: 'Estructura inicial'
+    estado: 'Operativo',
   },
   {
-    id: 'M04',
+    id: 'M05 / M06',
     titulo: 'Rutas y Frecuencias',
-    descripcion: 'Definición de origen, destino, horarios y asignación de viajes por fecha.',
+    descripcion: 'Definición de origen, destino, horarios y asignación de unidades por trayecto.',
     ruta: '/admin/rutas',
-    estado: 'Estructura inicial'
-  }
+    estado: 'Operativo',
+  },
 ])
 </script>
 
@@ -35,7 +36,9 @@ const modulosAdmin = ref([
       <header class="admin-header">
         <div>
           <h1>Panel Administrativo</h1>
-          <p class="subtitle">Sistema de Gestión y Venta de Pasajes Interprovinciales del Ecuador</p>
+          <p class="subtitle">
+            Sistema de Gestión y Venta de Pasajes Interprovinciales del Ecuador
+          </p>
         </div>
         <span class="badge-rol">Rol: Administrador</span>
       </header>
@@ -48,6 +51,9 @@ const modulosAdmin = ref([
           </div>
           <h2>{{ modulo.titulo }}</h2>
           <p>{{ modulo.descripcion }}</p>
+          <RouterLink :to="modulo.ruta" class="card-action-link">
+            Administrar módulo →
+          </RouterLink>
         </article>
       </section>
     </main>
@@ -95,6 +101,8 @@ const modulosAdmin = ref([
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 .card-header {
   display: flex;
@@ -107,9 +115,17 @@ const modulosAdmin = ref([
 }
 .status-tag {
   font-size: 0.8rem;
-  color: #475569;
-  background: #f1f5f9;
+  color: #166534;
+  background: #dcfce7;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
+  font-weight: 600;
+}
+.card-action-link {
+  margin-top: auto;
+  padding-top: 1rem;
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
 }
 </style>
