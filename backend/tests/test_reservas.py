@@ -220,3 +220,56 @@ def test_cliente_no_puede_consultar_reserva_ajena(
         assert consulta.status_code == 403
     finally:
         app.dependency_overrides[get_current_user] = anterior
+
+def test_historial_compras_retorna_datos_completos(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=5)).isoformat()
+    reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 7, "tipo_pasajero": "GENERAL"},
+    )
+
+    resp = reserva_client.get("/api/v1/reservas/historial")
+    assert resp.status_code == 200
+    items = resp.json()
+    assert len(items) >= 1
+    item = next(i for i in items if i["asiento"] == 7)
+    assert item["cooperativa"] == "Coop Express"
+    assert item["origen"] == "Quito"
+    assert item["destino"] == "Guayaquil"
+    assert item["estado"] == "PENDIENTE"
+
+
+def test_consistencia_transicion_estados_reserva(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=6)).isoformat()
+    creada = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 8, "tipo_pasajero": "GENERAL"},
+    )
+    res_id = creada.json()["id"]
+
+    # Simular usuario administrador para actualizar estado
+    app = reserva_client.app
+    original_user = app.dependency_overrides[get_current_user]
+
+    def admin_user():
+        return Usuario(id=1, nombre="Admin", correo="admin@test.com", cedula="1111111111", rol="admin", activo=True)
+
+    try:
+        app.dependency_overrides[get_current_user] = admin_user
+
+        # 1. Transición válida: PENDIENTE -> PAGADA
+        ok_resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGADA"})
+        assert ok_resp.status_code == 200
+        assert ok_resp.json()["estado"] == "PAGADA"
+
+        # 2. Cancelar la reserva
+        cancel_resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "CANCELADA"})
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["estado"] == "CANCELADA"
+
+        # 3. Transición inválida: de CANCELADA no se puede volver a PAGADA -> 409 Conflict
+        fail_resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGADA"})
+        assert fail_resp.status_code == 409
+        assert "Transición de estado inválida" in fail_resp.json()["error"]["message"]
+    finally:
+        app.dependency_overrides[get_current_user] = original_user

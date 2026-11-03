@@ -1,5 +1,7 @@
 from datetime import date, time
 
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.services.tarifas import TipoPasajero
@@ -56,3 +58,14 @@ class HistorialCompraItem(BaseModel):
     tipo_pasajero: str
     precio: float
     estado: str
+
+class EstadoReserva(str, Enum):
+    PENDIENTE = "PENDIENTE"
+    PAGADA = "PAGADA"
+    CONFIRMADA = "CONFIRMADA"
+    CANCELADA = "CANCELADA"
+    EXPIRADA = "EXPIRADA"
+
+
+class ReservaEstadoUpdate(BaseModel):
+    estado: EstadoReserva
