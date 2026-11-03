@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,3 +40,19 @@ class DisponibilidadAsientosResponse(BaseModel):
     asientos_ocupados: list[int]
     asientos_disponibles: list[int]
     mapa_asientos: list[AsientoEstado]
+
+class HistorialCompraItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    reserva_id: int
+    frecuencia_id: int
+    cooperativa: str
+    numero_disco: str
+    origen: str
+    destino: str
+    hora_salida: time
+    fecha_viaje: date
+    asiento: int
+    tipo_pasajero: str
+    precio: float
+    estado: str

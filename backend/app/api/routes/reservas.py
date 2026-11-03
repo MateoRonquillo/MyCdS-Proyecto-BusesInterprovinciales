@@ -8,10 +8,11 @@ from sqlalchemy.exc import IntegrityError
 from app.api.dependencies import get_current_user
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
-from app.models.core_models import Bus, Frecuencia, Reserva, Usuario
+from app.models.core_models import Bus, Cooperativa, Frecuencia, Reserva, Ruta, Usuario
 from app.schemas.reservas import (
     AsientoEstado,
     DisponibilidadAsientosResponse,
+    HistorialCompraItem,
     ReservaCreate,
     ReservaResponse,
     ReservaUpdate,
@@ -145,6 +146,47 @@ def list_reservations(
         query = query.where(Reserva.usuario_id == user.id)
     return list(db.scalars(query))
 
+@router.get(
+    "/historial",
+    response_model=list[HistorialCompraItem],
+    summary="Consultar historial detallado de compras del usuario",
+)
+def get_purchase_history(
+    estado: str | None = Query(None, description="Filtrar por estado opcional (ej: PENDIENTE, PAGADA)"),
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[HistorialCompraItem]:
+    query = (
+        select(
+            Reserva.id.label("reserva_id"),
+            Reserva.frecuencia_id,
+            Cooperativa.nombre.label("cooperativa"),
+            Bus.numero_disco,
+            Ruta.origen,
+            Ruta.destino,
+            Frecuencia.hora_salida,
+            Reserva.fecha_viaje,
+            Reserva.asiento,
+            Reserva.tipo_pasajero,
+            Reserva.precio,
+            Reserva.estado,
+        )
+        .join(Frecuencia, Reserva.frecuencia_id == Frecuencia.id)
+        .join(Bus, Frecuencia.bus_id == Bus.id)
+        .join(Cooperativa, Bus.cooperativa_id == Cooperativa.id)
+        .join(Ruta, Frecuencia.ruta_id == Ruta.id)
+        .order_by(Reserva.fecha_viaje.desc(), Reserva.id.desc())
+    )
+
+    # Si es cliente normal, solo ve sus propias compras; si es personal, ve todas
+    if normalize_role(user.rol) not in {normalize_role(role) for role in STAFF_ROLES}:
+        query = query.where(Reserva.usuario_id == user.id)
+
+    if estado:
+        query = query.where(Reserva.estado == estado.upper())
+
+    rows = db.execute(query).mappings().all()
+    return [HistorialCompraItem(**row) for row in rows]
 
 @router.get("/{reservation_id}", response_model=ReservaResponse, summary="Consultar una reserva")
 def get_reservation(
