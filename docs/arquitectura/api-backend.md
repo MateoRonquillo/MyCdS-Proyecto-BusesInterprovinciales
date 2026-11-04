@@ -92,6 +92,10 @@ Solo administradores y oficinistas pueden resolver pagos:
 
 Cada intento se conserva como historial. No se permite registrar más de un pago
 pendiente por reserva ni revisar dos veces el mismo pago.
+`GET /api/v1/pagos/{id}/historial` devuelve, en orden cronológico, el estado
+inicial y cada transición con su actor, fecha y motivo de rechazo. Los eventos
+se guardan en la misma transacción que el pago y el cambio de estado de la
+reserva.
 
 ## Errores
 

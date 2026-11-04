@@ -8,8 +8,14 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
-from app.models.core_models import Pago, Reserva, Usuario
-from app.schemas.pagos import EstadoPago, PagoCreate, PagoResponse, RechazoPagoRequest
+from app.models.core_models import Pago, PagoEstadoHistorial, Reserva, Usuario
+from app.schemas.pagos import (
+    EstadoPago,
+    PagoCreate,
+    PagoEstadoHistorialResponse,
+    PagoResponse,
+    RechazoPagoRequest,
+)
 
 router = APIRouter(prefix="/pagos", tags=["pagos"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
@@ -46,6 +52,24 @@ def _ensure_payment_access(db: Session, payment: Pago, user: Usuario) -> None:
     reservation = db.get(Reserva, payment.reserva_id)
     if reservation is None or reservation.usuario_id != user.id:
         raise HTTPException(status_code=403, detail="No tiene permiso para consultar este pago")
+
+
+def _record_status_change(
+    db: Session,
+    payment: Pago,
+    previous_status: str | None,
+    changed_by: Usuario,
+    reason: str | None = None,
+) -> None:
+    db.add(
+        PagoEstadoHistorial(
+            pago_id=payment.id,
+            estado_anterior=previous_status,
+            estado_nuevo=payment.estado,
+            cambiado_por_id=changed_by.id,
+            motivo=reason,
+        )
+    )
 
 
 @router.post(
@@ -92,6 +116,8 @@ def create_payment(
     )
     reservation.estado = "PAGO_EN_REVISION"
     db.add(payment)
+    db.flush()
+    _record_status_change(db, payment, None, user)
     db.commit()
     db.refresh(payment)
     return payment
@@ -124,6 +150,26 @@ def get_payment(
     return payment
 
 
+@router.get(
+    "/{payment_id}/historial",
+    response_model=list[PagoEstadoHistorialResponse],
+    summary="Consultar el historial de estados de un pago",
+)
+def get_payment_status_history(
+    payment_id: int,
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[PagoEstadoHistorial]:
+    payment = _get_payment(db, payment_id)
+    _ensure_payment_access(db, payment, user)
+    query = (
+        select(PagoEstadoHistorial)
+        .where(PagoEstadoHistorial.pago_id == payment.id)
+        .order_by(PagoEstadoHistorial.cambiado_en, PagoEstadoHistorial.id)
+    )
+    return list(db.scalars(query))
+
+
 @router.post(
     "/{payment_id}/aprobar",
     response_model=PagoResponse,
@@ -140,10 +186,12 @@ def approve_payment(
         raise HTTPException(status_code=409, detail="El pago ya fue revisado")
     if reservation.estado != "PAGO_EN_REVISION":
         raise HTTPException(status_code=409, detail="La reserva no está en revisión de pago")
+    previous_status = payment.estado
     payment.estado = EstadoPago.APROBADO.value
     payment.revisado_por_id = reviewer.id
     payment.revisado_en = datetime.now(timezone.utc)
     reservation.estado = "CONFIRMADA"
+    _record_status_change(db, payment, previous_status, reviewer)
     db.commit()
     db.refresh(payment)
     return payment
@@ -166,11 +214,13 @@ def reject_payment(
         raise HTTPException(status_code=409, detail="El pago ya fue revisado")
     if reservation.estado != "PAGO_EN_REVISION":
         raise HTTPException(status_code=409, detail="La reserva no está en revisión de pago")
+    previous_status = payment.estado
     payment.estado = EstadoPago.RECHAZADO.value
     payment.motivo_rechazo = payload.motivo
     payment.revisado_por_id = reviewer.id
     payment.revisado_en = datetime.now(timezone.utc)
     reservation.estado = "PENDIENTE"
+    _record_status_change(db, payment, previous_status, reviewer, payload.motivo)
     db.commit()
     db.refresh(payment)
     return payment

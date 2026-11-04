@@ -97,3 +97,15 @@ class Pago(Base):
     creado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     revisado_en = Column(DateTime(timezone=True), nullable=True)
 
+
+class PagoEstadoHistorial(Base):
+    __tablename__ = "pagos_estado_historial"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pago_id = Column(Integer, ForeignKey("pagos.id"), nullable=False, index=True)
+    estado_anterior = Column(String(20), nullable=True)
+    estado_nuevo = Column(String(20), nullable=False)
+    cambiado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    motivo = Column(String(255), nullable=True)
+    cambiado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+

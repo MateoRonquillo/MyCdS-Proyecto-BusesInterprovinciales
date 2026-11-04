@@ -57,3 +57,15 @@ class PagoResponse(BaseModel):
     motivo_rechazo: str | None
     creado_en: datetime
     revisado_en: datetime | None
+
+
+class PagoEstadoHistorialResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    pago_id: int
+    estado_anterior: EstadoPago | None
+    estado_nuevo: EstadoPago
+    cambiado_por_id: int
+    motivo: str | None
+    cambiado_en: datetime
