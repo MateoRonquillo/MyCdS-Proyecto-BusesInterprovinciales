@@ -97,6 +97,19 @@ inicial y cada transición con su actor, fecha y motivo de rechazo. Los eventos
 se guardan en la misma transacción que el pago y el cambio de estado de la
 reserva.
 
+## Boletos y códigos QR
+
+Al aprobar un pago se crea un boleto con un código aleatorio asociado de forma
+única a la reserva. El QR contiene únicamente ese código opaco, sin datos
+personales.
+
+- `GET /api/v1/boletos/{reserva_id}/qr`: descarga el QR PNG para el dueño de la
+  reserva o personal autorizado. Solo está disponible cuando la reserva está
+  confirmada y existe un pago aprobado.
+- `POST /api/v1/boletos/validar` con `{"codigo":"..."}`: valida el código
+  durante el abordaje. Requiere rol de administrador, oficinista, chofer o
+  ayudante y devuelve el asiento y la fecha del viaje.
+
 ## Errores
 
 Los errores HTTP se devuelven con el estado original y un cuerpo `error` que

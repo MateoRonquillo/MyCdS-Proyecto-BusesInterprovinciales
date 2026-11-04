@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
-from app.models.core_models import Pago, PagoEstadoHistorial, Reserva, Usuario
+from app.models.core_models import Boleto, Pago, PagoEstadoHistorial, Reserva, Usuario
 from app.schemas.pagos import (
     EstadoPago,
     PagoCreate,
@@ -191,6 +192,9 @@ def approve_payment(
     payment.revisado_por_id = reviewer.id
     payment.revisado_en = datetime.now(timezone.utc)
     reservation.estado = "CONFIRMADA"
+    ticket = db.scalar(select(Boleto).where(Boleto.reserva_id == reservation.id))
+    if ticket is None:
+        db.add(Boleto(reserva_id=reservation.id, codigo=secrets.token_urlsafe(32)))
     _record_status_change(db, payment, previous_status, reviewer)
     db.commit()
     db.refresh(payment)

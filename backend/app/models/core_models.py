@@ -109,3 +109,12 @@ class PagoEstadoHistorial(Base):
     motivo = Column(String(255), nullable=True)
     cambiado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
+
+class Boleto(Base):
+    __tablename__ = "boletos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reserva_id = Column(Integer, ForeignKey("reservas.id"), nullable=False, unique=True, index=True)
+    codigo = Column(String(64), nullable=False, unique=True, index=True)
+    creado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
