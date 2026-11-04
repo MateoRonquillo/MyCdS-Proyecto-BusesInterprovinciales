@@ -21,4 +21,9 @@ def create_access_token(subject: str) -> str:
 
 
 def decode_access_token(token: str) -> dict[str, object]:
-    return jwt.decode(token, _get_secret_key(), algorithms=["HS256"])
+    return jwt.decode(
+        token,
+        _get_secret_key(),
+        algorithms=["HS256"],
+        options={"require": ["exp", "sub"]},
+    )

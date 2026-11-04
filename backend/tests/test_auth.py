@@ -160,3 +160,58 @@ def test_login_rejects_invalid_credentials(
 
     assert response.status_code == 401
     assert response.json()["error"]["message"] == "Correo o contraseña incorrectos"
+
+@pytest.mark.parametrize(
+    "caso",
+    [
+        "token_expirado",
+        "firma_incorrecta",
+        "algoritmo_no_permitido",
+        "sin_identificador",
+        "identificador_invalido",
+        "usuario_inexistente",
+        "usuario_inactivo",
+        "sin_expiracion",
+    ],
+)
+def test_profile_rejects_unsafe_tokens(
+    auth_client: TestClient,
+    caso: str,
+) -> None:
+    import time
+
+    import jwt
+
+    secret = "test-secret-key-with-at-least-32-characters"
+    algorithm = "HS256"
+    now = int(time.time())
+    payload = {"sub": "1", "exp": now + 300}
+
+    if caso == "token_expirado":
+        payload["exp"] = now - 60
+    elif caso == "firma_incorrecta":
+        secret = "different-secret-key-with-at-least-32-characters"
+    elif caso == "algoritmo_no_permitido":
+        algorithm = "HS384"
+    elif caso == "sin_identificador":
+        payload.pop("sub")
+    elif caso == "identificador_invalido":
+        payload["sub"] = "no-es-un-numero"
+    elif caso == "usuario_inexistente":
+        payload["sub"] = "999999"
+    elif caso == "usuario_inactivo":
+        payload["sub"] = "2"
+    elif caso == "sin_expiracion":
+        payload.pop("exp")
+
+    token = jwt.encode(payload, secret, algorithm=algorithm)
+
+    response = auth_client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 401, (
+        f"El caso '{caso}' debe rechazarse con 401, "
+        f"pero devolvio {response.status_code}"
+    )
