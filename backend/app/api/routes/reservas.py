@@ -8,11 +8,14 @@ from sqlalchemy.exc import IntegrityError
 from app.api.dependencies import get_current_user
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
-from app.models.core_models import Bus, Frecuencia, Reserva, Usuario
+from app.models.core_models import Bus, Cooperativa, Frecuencia, Reserva, Ruta, Usuario
 from app.schemas.reservas import (
     AsientoEstado,
     DisponibilidadAsientosResponse,
+    EstadoReserva,
+    HistorialCompraItem,
     ReservaCreate,
+    ReservaEstadoUpdate,
     ReservaResponse,
     ReservaUpdate,
 )
@@ -20,6 +23,22 @@ from app.services.tarifas import calcular_pasajero
 
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
+TRANSICIONES_VALIDAS: dict[str, set[str]] = {
+    "PENDIENTE": {"PAGADA", "CONFIRMADA", "CANCELADA", "EXPIRADA"},
+    "PAGADA": {"CONFIRMADA", "CANCELADA"},
+    "CONFIRMADA": {"CANCELADA"},
+    "CANCELADA": set(),
+    "EXPIRADA": set(),
+}
+
+def _corregir_reservas_expiradas(db: Session) -> None:
+    """Garantiza consistencia en BD pasando a EXPIRADA reservas pendientes cuya fecha ya venció."""
+    stmt = select(Reserva).where(Reserva.estado == "PENDIENTE", Reserva.fecha_viaje < date.today())
+    expiradas = db.scalars(stmt).all()
+    if expiradas:
+        for r in expiradas:
+            r.estado = "EXPIRADA"
+        db.commit()
 
 
 def _owned_reservation(db: Session, reservation_id: int, user: Usuario) -> Reserva:
@@ -140,11 +159,54 @@ def list_reservations(
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> list[Reserva]:
+    _corregir_reservas_expiradas(db)  
     query = select(Reserva).order_by(Reserva.fecha_viaje, Reserva.id)
     if normalize_role(user.rol) not in {normalize_role(role) for role in STAFF_ROLES}:
         query = query.where(Reserva.usuario_id == user.id)
     return list(db.scalars(query))
 
+@router.get(
+    "/historial",
+    response_model=list[HistorialCompraItem],
+    summary="Consultar historial detallado de compras del usuario",
+)
+def get_purchase_history(
+    estado: str | None = Query(None, description="Filtrar por estado opcional (ej: PENDIENTE, PAGADA)"),
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> list[HistorialCompraItem]:
+    _corregir_reservas_expiradas(db)  
+    query = (
+        select(
+            Reserva.id.label("reserva_id"),
+            Reserva.frecuencia_id,
+            Cooperativa.nombre.label("cooperativa"),
+            Bus.numero_disco,
+            Ruta.origen,
+            Ruta.destino,
+            Frecuencia.hora_salida,
+            Reserva.fecha_viaje,
+            Reserva.asiento,
+            Reserva.tipo_pasajero,
+            Reserva.precio,
+            Reserva.estado,
+        )
+        .join(Frecuencia, Reserva.frecuencia_id == Frecuencia.id)
+        .join(Bus, Frecuencia.bus_id == Bus.id)
+        .join(Cooperativa, Bus.cooperativa_id == Cooperativa.id)
+        .join(Ruta, Frecuencia.ruta_id == Ruta.id)
+        .order_by(Reserva.fecha_viaje.desc(), Reserva.id.desc())
+    )
+
+    # Si es cliente normal, solo ve sus propias compras; si es personal, ve todas
+    if normalize_role(user.rol) not in {normalize_role(role) for role in STAFF_ROLES}:
+        query = query.where(Reserva.usuario_id == user.id)
+
+    if estado:
+        query = query.where(Reserva.estado == estado.upper())
+
+    rows = db.execute(query).mappings().all()
+    return [HistorialCompraItem(**row) for row in rows]
 
 @router.get("/{reservation_id}", response_model=ReservaResponse, summary="Consultar una reserva")
 def get_reservation(
@@ -200,3 +262,50 @@ def cancel_reservation(
     reservation.estado = "CANCELADA"
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+@router.patch(
+    "/{reservation_id}/estado",
+    response_model=ReservaResponse,
+    summary="Actualizar y corregir el estado de una reserva garantizando consistencia",
+)
+def update_reservation_status(
+    reservation_id: int,
+    payload: ReservaEstadoUpdate,
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> Reserva:
+    staff_roles = {normalize_role(role) for role in STAFF_ROLES}
+    if normalize_role(user.rol) not in staff_roles:
+        raise HTTPException(status_code=403, detail="No tiene permisos para modificar estados de reserva")
+
+    reservation = db.get(Reserva, reservation_id)
+    if reservation is None:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+
+    estado_actual = reservation.estado.upper()
+    nuevo_estado = payload.estado.value.upper()
+
+    if estado_actual == nuevo_estado:
+        return reservation
+
+    permitidos = TRANSICIONES_VALIDAS.get(estado_actual, set())
+    if nuevo_estado not in permitidos:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Transición de estado inválida: no se puede cambiar de {estado_actual} a {nuevo_estado}",
+        )
+
+    # Validar que no se pague o confirme una reserva cuyo viaje ya venció
+    if estado_actual == "PENDIENTE" and nuevo_estado in {"PAGADA", "CONFIRMADA"}:
+        if reservation.fecha_viaje < date.today():
+            reservation.estado = "EXPIRADA"
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail="La fecha del viaje ya venció; la reserva ha expirado y no puede pagarse ni confirmarse",
+            )
+
+    reservation.estado = nuevo_estado
+    db.commit()
+    db.refresh(reservation)
+    return reservation
