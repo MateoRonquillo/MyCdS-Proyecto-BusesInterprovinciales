@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, UniqueConstraint, Computed
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, DateTime, UniqueConstraint, Computed, func
 from app.db.database import Base
 
 class Usuario(Base):
@@ -80,4 +80,41 @@ class Reserva(Base):
         ),
         nullable=True,
     )
+
+
+class Pago(Base):
+    __tablename__ = "pagos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reserva_id = Column(Integer, ForeignKey("reservas.id"), nullable=False, index=True)
+    registrado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    revisado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    metodo_pago = Column(String(20), nullable=False)
+    monto = Column(Float, nullable=False)
+    referencia = Column(String(100), nullable=True)
+    estado = Column(String(20), nullable=False, default="PENDIENTE", index=True)
+    motivo_rechazo = Column(String(255), nullable=True)
+    creado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    revisado_en = Column(DateTime(timezone=True), nullable=True)
+
+
+class PagoEstadoHistorial(Base):
+    __tablename__ = "pagos_estado_historial"
+
+    id = Column(Integer, primary_key=True, index=True)
+    pago_id = Column(Integer, ForeignKey("pagos.id"), nullable=False, index=True)
+    estado_anterior = Column(String(20), nullable=True)
+    estado_nuevo = Column(String(20), nullable=False)
+    cambiado_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    motivo = Column(String(255), nullable=True)
+    cambiado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class Boleto(Base):
+    __tablename__ = "boletos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reserva_id = Column(Integer, ForeignKey("reservas.id"), nullable=False, unique=True, index=True)
+    codigo = Column(String(64), nullable=False, unique=True, index=True)
+    creado_en = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 

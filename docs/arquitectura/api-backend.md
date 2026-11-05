@@ -72,6 +72,44 @@ bachillerato bajo ciertas condiciones, niñas, niños, adolescentes y mayores de
 65 años. La [Ley Orgánica de las Personas con Discapacidad, artículo 87](https://www.asambleanacional.gob.ec/es/system/files/ley_organica_de_discapacidades.pdf)
 también reconoce la tarifa preferencial del 50% para transporte terrestre.
 
+## Pagos y aprobación
+
+Los endpoints de pagos requieren autenticación. `POST /api/v1/pagos` registra
+un pago pendiente para una reserva propia (o de ventanilla para personal) y
+cambia la reserva a `PAGO_EN_REVISION`. El monto debe coincidir con el total
+guardado en la reserva; depósitos y transferencias requieren referencia.
+`GET /api/v1/pagos` lista los pagos propios del cliente o todos para
+administradores y oficinistas; admite el filtro `estado`. `GET /api/v1/pagos/{id}`
+consulta un pago con la misma regla de acceso.
+
+Solo administradores y oficinistas pueden resolver pagos:
+
+- `POST /api/v1/pagos/{id}/aprobar`: marca el pago como `APROBADO` y la reserva
+  como `CONFIRMADA`.
+- `POST /api/v1/pagos/{id}/rechazar` con `{"motivo":"..."}`: marca el pago
+  como `RECHAZADO`, guarda quién y cuándo lo revisó, y devuelve la reserva a
+  `PENDIENTE` para permitir registrar un pago nuevo.
+
+Cada intento se conserva como historial. No se permite registrar más de un pago
+pendiente por reserva ni revisar dos veces el mismo pago.
+`GET /api/v1/pagos/{id}/historial` devuelve, en orden cronológico, el estado
+inicial y cada transición con su actor, fecha y motivo de rechazo. Los eventos
+se guardan en la misma transacción que el pago y el cambio de estado de la
+reserva.
+
+## Boletos y códigos QR
+
+Al aprobar un pago se crea un boleto con un código aleatorio asociado de forma
+única a la reserva. El QR contiene únicamente ese código opaco, sin datos
+personales.
+
+- `GET /api/v1/boletos/{reserva_id}/qr`: descarga el QR PNG para el dueño de la
+  reserva o personal autorizado. Solo está disponible cuando la reserva está
+  confirmada y existe un pago aprobado.
+- `POST /api/v1/boletos/validar` con `{"codigo":"..."}`: valida el código
+  durante el abordaje. Requiere rol de administrador, oficinista, chofer o
+  ayudante y devuelve el asiento y la fecha del viaje.
+
 ## Errores
 
 Los errores HTTP se devuelven con el estado original y un cuerpo `error` que
