@@ -295,6 +295,16 @@ def update_reservation_status(
             detail=f"Transición de estado inválida: no se puede cambiar de {estado_actual} a {nuevo_estado}",
         )
 
+    # Validar que no se pague o confirme una reserva cuyo viaje ya venció
+    if estado_actual == "PENDIENTE" and nuevo_estado in {"PAGADA", "CONFIRMADA"}:
+        if reservation.fecha_viaje < date.today():
+            reservation.estado = "EXPIRADA"
+            db.commit()
+            raise HTTPException(
+                status_code=409,
+                detail="La fecha del viaje ya venció; la reserva ha expirado y no puede pagarse ni confirmarse",
+            )
+
     reservation.estado = nuevo_estado
     db.commit()
     db.refresh(reservation)

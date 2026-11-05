@@ -273,3 +273,38 @@ def test_consistencia_transicion_estados_reserva(reserva_client: TestClient):
         assert "Transición de estado inválida" in fail_resp.json()["error"]["message"]
     finally:
         app.dependency_overrides[get_current_user] = original_user
+
+
+def test_no_permite_pagar_reserva_vencida_y_la_marca_expirada(reserva_client: TestClient):
+    from app.models.core_models import Reserva
+
+    # 1. Crear una reserva con fecha vencida directamente en la base de datos
+    app = reserva_client.app
+    admin_user = Usuario(id=1, nombre="Admin", correo="admin@test.com", cedula="1111111111", rol="admin", activo=True)
+    app.dependency_overrides[get_current_user] = lambda: admin_user
+
+    # Obtener sesión para insertar reserva vencida
+    get_db_override = app.dependency_overrides[get_db]
+    db = next(get_db_override())
+    reserva_vencida = Reserva(
+        usuario_id=1,
+        frecuencia_id=1,
+        fecha_viaje=date.today() - timedelta(days=1),
+        asiento=9,
+        tipo_pasajero="GENERAL",
+        precio=12.50,
+        estado="PENDIENTE",
+    )
+    db.add(reserva_vencida)
+    db.commit()
+    db.refresh(reserva_vencida)
+    res_id = reserva_vencida.id
+
+    # 2. Intentar pasar la reserva de PENDIENTE a PAGADA directamente -> debe rechazar con 409
+    resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGADA"})
+    assert resp.status_code == 409
+    assert "ha expirado" in resp.json()["error"]["message"]
+
+    # 3. Comprobar que en base de datos quedó actualizada como EXPIRADA
+    db.refresh(reserva_vencida)
+    assert reserva_vencida.estado == "EXPIRADA"
