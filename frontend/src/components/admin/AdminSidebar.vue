@@ -1,5 +1,14 @@
 <script setup>
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
+
+const auth = useAuthStore()
+const router = useRouter()
+
+function cerrarSesion() {
+  auth.logout()
+  router.push('/login')
+}
 
 defineProps({
   rol: {
@@ -18,6 +27,7 @@ const enlacesNavegacion = [
 ]
 </script>
 
+
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
@@ -35,6 +45,8 @@ const enlacesNavegacion = [
         </li>
       </ul>
     </nav>
+
+    <button type="button" class="btn-salir" @click="cerrarSesion">Cerrar sesión</button>
   </aside>
 </template>
 
@@ -85,5 +97,17 @@ const enlacesNavegacion = [
   background: #334155;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
+}
+.btn-salir {
+  margin-top: auto;
+  padding: 10px 14px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: transparent;
+  color: #f8fafc;
+  font-weight: 600;
+}
+.btn-salir:hover {
+  background: #1e293b;
 }
 </style>
