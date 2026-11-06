@@ -12,6 +12,7 @@ class UserResponse(BaseModel):
     id: int
     nombre: str
     correo: str
+    cedula: str
     rol: str
 
 

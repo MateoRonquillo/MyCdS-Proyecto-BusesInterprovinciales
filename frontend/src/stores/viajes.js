@@ -11,7 +11,6 @@ export const FRANJAS = [
 export const ORDENES = [
   { valor: 'hora', etiqueta: 'Hora de salida' },
   { valor: 'precio', etiqueta: 'Menor precio' },
-  { valor: 'duracion', etiqueta: 'Menor duración' },
 ]
 
 const filtrosIniciales = () => ({
