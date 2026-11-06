@@ -23,6 +23,9 @@ const enlacesNavegacion = [
   { nombre: 'Buses y Plantillas (M03)', ruta: '/admin/buses', seccion: 'ADMIN' },
   { nombre: 'Rutas y Frecuencias (M05)', ruta: '/admin/rutas', seccion: 'ADMIN' },
   { nombre: 'Panel Oficinista (M13)', ruta: '/oficinista', seccion: 'OFICINA' },
+  { nombre: 'Bandeja de Reservas', ruta: '/oficinista/reservas', seccion: 'OFICINA' },
+  { nombre: 'Carga de Comprobantes', ruta: '/oficinista/pagos', seccion: 'OFICINA' },
+  { nombre: 'Venta en Ventanilla', ruta: '/oficinista/ventas', seccion: 'OFICINA' },
   { nombre: 'Buscador Cliente', ruta: '/viajes', seccion: 'WEB' },
 ]
 </script>

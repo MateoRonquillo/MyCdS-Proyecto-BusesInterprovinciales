@@ -29,6 +29,24 @@ export const adminRoutes = [
     component: () => import('../views/oficinista/OficinistaDashboardView.vue'),
     meta: { requiresAuth: true, role: 'OFICINISTA' },
   },
+  {
+    path: '/oficinista/reservas',
+    name: 'oficinista-reservas',
+    component: () => import('../views/oficinista/PanelReservasView.vue'),
+    meta: { requiresAuth: true, role: 'OFICINISTA' },
+  },
+  {
+    path: '/oficinista/pagos',
+    name: 'oficinista-pagos',
+    component: () => import('../views/oficinista/CargaComprobantesView.vue'),
+    meta: { requiresAuth: true, role: 'OFICINISTA' },
+  },
+  {
+    path: '/oficinista/ventas',
+    name: 'oficinista-ventas',
+    component: () => import('../views/oficinista/VentaPresencialView.vue'),
+    meta: { requiresAuth: true, role: 'OFICINISTA' },
+  },
 ]
 
 export default adminRoutes
