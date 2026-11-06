@@ -1,7 +1,18 @@
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useReservaStore } from '../../stores/reserva'
+import { useViajesStore } from '../../stores/viajes'
 
 const props = defineProps({ viaje: { type: Object, required: true } })
+const router = useRouter()
+const reserva = useReservaStore()
+const viajes = useViajesStore()
+
+function seleccionar() {
+  reserva.iniciar({ ...props.viaje, fecha: props.viaje.fecha || viajes.consulta?.fecha })
+  router.push({ name: 'reservar' })
+}
 
 const duracion = computed(() => {
   const h = Math.floor(props.viaje.duracion_min / 60)
@@ -35,7 +46,7 @@ const iniciales = computed(() => props.viaje.cooperativa.nombre.split(' ').map((
       <span class="asientos" :class="{ pocos, agotado }">
         {{ agotado ? 'Sin asientos' : `${viaje.asientos_disponibles} asiento${viaje.asientos_disponibles === 1 ? '' : 's'} disponible${viaje.asientos_disponibles === 1 ? '' : 's'}` }}
       </span>
-      <button class="reservar" type="button" :disabled="agotado" :title="agotado ? 'No hay asientos disponibles' : 'La selección de asientos se habilitará en la siguiente etapa'">
+      <button class="reservar" type="button" :disabled="agotado" :title="agotado ? 'No hay asientos disponibles' : 'Reservar este viaje'" @click="seleccionar">
         {{ agotado ? 'Agotado' : 'Seleccionar' }}
       </button>
     </footer>
