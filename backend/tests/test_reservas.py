@@ -308,3 +308,198 @@ def test_no_permite_pagar_reserva_vencida_y_la_marca_expirada(reserva_client: Te
     # 3. Comprobar que en base de datos quedó actualizada como EXPIRADA
     db.refresh(reserva_vencida)
     assert reserva_vencida.estado == "EXPIRADA"
+
+
+def test_pago_pendiente_no_genera_qr(reserva_client):
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+
+    # Crear una reserva
+    reserva = reserva_client.post("/api/v1/reservas", json={
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 1,
+        "tipo_pasajero": "GENERAL"
+    })
+    assert reserva.status_code == 201
+
+    # Registrar un pago
+    pago = reserva_client.post("/api/v1/pagos", json={
+        "reserva_id": reserva.json()["id"],
+        "metodo_pago": "EFECTIVO",
+        "monto": 12.50
+    })
+    assert pago.status_code == 201
+    assert pago.json()["estado"] == "PENDIENTE"
+
+    # El cliente no puede aprobar el pago
+    aprobar = reserva_client.post(
+        f"/api/v1/pagos/{pago.json()['id']}/aprobar"
+    )
+    assert aprobar.status_code == 403
+
+    # No se puede descargar el QR sin aprobar el pago
+    qr = reserva_client.get(
+        f"/api/v1/boletos/{reserva.json()['id']}/qr"
+    )
+    assert qr.status_code == 409
+
+
+def test_pago_aprobado_genera_qr(reserva_client):
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+
+    # Crear reserva y pago
+    reserva = reserva_client.post("/api/v1/reservas", json={
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 2,
+        "tipo_pasajero": "GENERAL"
+    })
+    assert reserva.status_code == 201
+
+    pago = reserva_client.post("/api/v1/pagos", json={
+        "reserva_id": reserva.json()["id"],
+        "metodo_pago": "EFECTIVO",
+        "monto": 12.50
+    })
+    assert pago.status_code == 201
+
+    # Simular un oficinista
+    app = reserva_client.app
+    anterior = app.dependency_overrides[get_current_user]
+
+    def oficinista():
+        return Usuario(
+            id=1, nombre="Oficinista",
+            correo="oficina@test.com",
+            cedula="1234567890",
+            rol="oficinista",
+            activo=True
+        )
+
+    try:
+        app.dependency_overrides[get_current_user] = oficinista
+
+        # Aprobar el pago
+        aprobado = reserva_client.post(
+            f"/api/v1/pagos/{pago.json()['id']}/aprobar"
+        )
+        assert aprobado.status_code == 200
+        assert aprobado.json()["estado"] == "APROBADO"
+    finally:
+        app.dependency_overrides[get_current_user] = anterior
+
+    # Descargar el QR como cliente
+    qr = reserva_client.get(
+        f"/api/v1/boletos/{reserva.json()['id']}/qr"
+    )
+    assert qr.status_code == 200
+    assert qr.headers["content-type"] == "image/png"
+
+
+
+def test_pago_con_monto_incorrecto(reserva_client):
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+
+    # Crear una reserva de $12.50
+    reserva = reserva_client.post("/api/v1/reservas", json={
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 3,
+        "tipo_pasajero": "GENERAL"
+    })
+    assert reserva.status_code == 201
+
+    # Intentar pagar solo $10
+    pago = reserva_client.post("/api/v1/pagos", json={
+        "reserva_id": reserva.json()["id"],
+        "metodo_pago": "EFECTIVO",
+        "monto": 10.00
+    })
+
+    # El sistema debe rechazar el monto
+    assert pago.status_code == 422
+
+
+def test_no_permite_pago_duplicado(reserva_client):
+    fecha = (date.today() + timedelta(days=8)).isoformat()
+
+    # Crear reserva
+    reserva = reserva_client.post("/api/v1/reservas", json={
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 4,
+        "tipo_pasajero": "GENERAL"
+    })
+    assert reserva.status_code == 201
+
+    # Datos del pago
+    datos = {
+        "reserva_id": reserva.json()["id"],
+        "metodo_pago": "EFECTIVO",
+        "monto": 12.50
+    }
+
+    # Primer pago: correcto
+    primero = reserva_client.post("/api/v1/pagos", json=datos)
+    assert primero.status_code == 201
+
+    # Segundo pago: debe rechazarse
+    segundo = reserva_client.post("/api/v1/pagos", json=datos)
+    assert segundo.status_code == 409
+
+
+def test_rechazo_de_pago(reserva_client):
+    fecha = (date.today() + timedelta(days=9)).isoformat()
+
+    # Crear reserva
+    reserva = reserva_client.post("/api/v1/reservas", json={
+        "frecuencia_id": 1,
+        "fecha_viaje": fecha,
+        "asiento": 5,
+        "tipo_pasajero": "GENERAL"
+    })
+    assert reserva.status_code == 201
+    reserva_id = reserva.json()["id"]
+
+    # Registrar pago
+    pago = reserva_client.post("/api/v1/pagos", json={
+        "reserva_id": reserva_id,
+        "metodo_pago": "EFECTIVO",
+        "monto": 12.50
+    })
+    assert pago.status_code == 201
+
+    # Simular un oficinista
+    app = reserva_client.app
+    anterior = app.dependency_overrides[get_current_user]
+
+    def oficinista():
+        return Usuario(
+            id=1, nombre="Oficinista",
+            correo="oficina@test.com",
+            cedula="1234567890",
+            rol="oficinista",
+            activo=True
+        )
+
+    try:
+        app.dependency_overrides[get_current_user] = oficinista
+
+        # Rechazar pago
+        rechazo = reserva_client.post(
+            f"/api/v1/pagos/{pago.json()['id']}/rechazar",
+            json={"motivo": "Comprobante incorrecto"}
+        )
+        assert rechazo.status_code == 200
+        assert rechazo.json()["estado"] == "RECHAZADO"
+    finally:
+        app.dependency_overrides[get_current_user] = anterior
+
+    # La reserva vuelve a pendiente
+    consulta = reserva_client.get(f"/api/v1/reservas/{reserva_id}")
+    assert consulta.status_code == 200
+    assert consulta.json()["estado"] == "PENDIENTE"
+
+    # El QR sigue bloqueado
+    qr = reserva_client.get(f"/api/v1/boletos/{reserva_id}/qr")
+    assert qr.status_code == 409
