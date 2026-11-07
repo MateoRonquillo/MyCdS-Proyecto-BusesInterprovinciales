@@ -1,7 +1,8 @@
 import { API_URL } from './api'
 import { generarViajesMock } from './viajesMock'
 
-export const USAR_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
+export const USAR_MOCKS =
+  (import.meta.env.VITE_USE_MOCKS_CLIENTE ?? import.meta.env.VITE_USE_MOCKS) !== 'false'
 
 const PAUSA_SIMULADA_MS = 450
 

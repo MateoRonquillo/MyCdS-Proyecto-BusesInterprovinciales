@@ -76,6 +76,7 @@ def test_login_returns_jwt_and_profile(auth_client: TestClient) -> None:
         "nombre": "Cliente de prueba",
         "correo": "cliente@example.com",
         "rol": "cliente",
+        "cedula": "1234567890",
     }
     token = response.json()["access_token"]
     profile = auth_client.get(

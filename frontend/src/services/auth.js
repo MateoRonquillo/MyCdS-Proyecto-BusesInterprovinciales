@@ -14,8 +14,10 @@ export async function iniciarSesion(correo, password) {
 
   const datos = await respuesta.json().catch(() => ({}))
   if (!respuesta.ok) {
+    const e = datos.error
     throw new Error(
-      typeof datos.detail === 'string' ? datos.detail : 'Revisa los datos ingresados.',
+      e?.code === 'validation_error' ? 'Revisa los datos ingresados.'
+        : e?.message || (typeof datos.detail === 'string' ? datos.detail : 'Revisa los datos ingresados.'),
     )
   }
   return datos

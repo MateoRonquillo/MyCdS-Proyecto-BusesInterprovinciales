@@ -23,6 +23,12 @@ const routes = [
         name: 'login',
         component: () => import('../views/cliente/LoginView.vue'),
       },
+      {
+        path: 'reservar',
+        name: 'reservar',
+        component: () => import('../views/cliente/ReservaView.vue'),
+        meta: { requiresAuth: true, role: 'CLIENTE' },
+      },
     ],
   },
   ...adminRoutes,
