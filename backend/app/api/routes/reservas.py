@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.dependencies import get_current_user
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
-from app.models.core_models import Bus, Cooperativa, Frecuencia, Reserva, Ruta, Usuario
+from app.models.core_models import Bus, Cooperativa, Frecuencia, Pago, PagoEstadoHistorial, Reserva, Ruta, Usuario
 from app.schemas.reservas import (
     AsientoEstado,
     DisponibilidadAsientosResponse,
@@ -260,6 +260,25 @@ def cancel_reservation(
         raise HTTPException(status_code=409, detail="La reserva ya está cancelada")
     if reservation.estado not in {"PENDIENTE", "PAGO_EN_REVISION"}:
         raise HTTPException(status_code=409, detail="Solo se pueden cancelar reservas pendientes o en revisión de pago")
+
+    # Sincronizar pago pendiente si la reserva estaba en revisión
+    query_pago = select(Pago).where(Pago.reserva_id == reservation.id, Pago.estado == "PENDIENTE")
+    pago_asociado = db.scalar(query_pago)
+    if pago_asociado is not None:
+        pago_asociado.estado = "RECHAZADO"
+        pago_asociado.motivo_rechazo = "Cancelado por anulación de la reserva"
+        pago_asociado.revisado_por_id = user.id
+        pago_asociado.revisado_en = datetime.now(timezone.utc)
+        db.add(
+            PagoEstadoHistorial(
+                pago_id=pago_asociado.id,
+                estado_anterior="PENDIENTE",
+                estado_nuevo="RECHAZADO",
+                cambiado_por_id=user.id,
+                motivo="Cancelado por anulación de la reserva",
+            )
+        )
+
     reservation.estado = "CANCELADA"
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

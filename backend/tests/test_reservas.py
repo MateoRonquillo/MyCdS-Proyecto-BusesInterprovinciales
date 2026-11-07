@@ -374,3 +374,32 @@ def test_transicion_pago_en_revision_consistente(reserva_client: TestClient):
         assert conf.json()["estado"] == "CONFIRMADA"
     finally:
         app.dependency_overrides[get_current_user] = original_user
+
+def test_cancelar_reserva_en_revision_sincroniza_pago_a_rechazado(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=9)).isoformat()
+
+    # 1. Crear reserva
+    creada = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 2, "tipo_pasajero": "GENERAL"},
+    )
+    assert creada.status_code == 201
+    res_id = creada.json()["id"]
+
+    # 2. Registrar pago -> la reserva pasa a PAGO_EN_REVISION y el pago a PENDIENTE
+    pago_resp = reserva_client.post(
+        "/api/v1/pagos",
+        json={"reserva_id": res_id, "metodo_pago": "EFECTIVO", "monto": 12.50},
+    )
+    assert pago_resp.status_code == 201
+    pago_id = pago_resp.json()["id"]
+
+    # 3. Cancelar la reserva
+    del_resp = reserva_client.delete(f"/api/v1/reservas/{res_id}")
+    assert del_resp.status_code == 204
+
+    # 4. Verificar que el pago asociado quedo sincronizado a RECHAZADO
+    pago_check = reserva_client.get(f"/api/v1/pagos/{pago_id}")
+    assert pago_check.status_code == 200
+    assert pago_check.json()["estado"] == "RECHAZADO"
+    assert "Cancelado por anulación" in pago_check.json()["motivo_rechazo"]
