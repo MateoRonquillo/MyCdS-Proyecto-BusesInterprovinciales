@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import MapaAsientos from '../../components/cliente/MapaAsientos.vue'
 import { useAuthStore } from '../../stores/auth'
 import { useReservaStore } from '../../stores/reserva'
+import { guardarPasajeros } from '../../services/compras'
 import { MAX_PASAJEROS, TIPOS_PASAJERO, calcularTarifa, crearReservas, obtenerDisponibilidad } from '../../services/reservas'
 import { validarCedula, validarCorreo, validarNombres } from '../../utils/validaciones'
 
@@ -23,7 +24,6 @@ const libres = computed(() => (disp.value.capacidad ? disp.value.capacidad - dis
 const maxPasajeros = computed(() => Math.max(1, Math.min(MAX_PASAJEROS, libres.value)))
 const seleccionados = computed(() => reserva.pasajeros.map((p) => p.asiento).filter(Boolean))
 const etiquetaTipo = (v) => TIPOS_PASAJERO.find((t) => t.valor === v)?.etiqueta || v
-// La cédula del comprador viene de su cuenta: se muestra bloqueada y no se revalida
 const cedulaCuenta = computed(() => auth.usuario?.cedula || '')
 const dinero = (n) => `$${Number(n).toFixed(2)}`
 
@@ -47,11 +47,12 @@ async function cargarDisponibilidad() {
 
 onMounted(async () => {
   if (!reserva.viaje) return router.replace({ name: 'viajes' })
+  if (auth.usuario && !auth.usuario.cedula) await auth.refrescarUsuario()
   const comprador = reserva.pasajeros[0]
   if (comprador && auth.usuario) {
     if (!comprador.nombres) comprador.nombres = auth.usuario.nombre
     if (!comprador.correo) comprador.correo = auth.usuario.correo
-    if (!comprador.cedula && auth.usuario.cedula) comprador.cedula = auth.usuario.cedula
+    if (auth.usuario.cedula) comprador.cedula = auth.usuario.cedula
   }
   await cargarDisponibilidad()
 })
@@ -112,6 +113,7 @@ async function confirmar() {
   cargando.value = true
   try {
     reserva.creadas = await crearReservas(reserva.viaje, reserva.pasajeros)
+    guardarPasajeros(reserva.creadas, reserva.pasajeros)
     reserva.guardar()
     finalizada.value = true
   } catch (e) {
@@ -124,6 +126,11 @@ async function confirmar() {
   } finally {
     cargando.value = false
   }
+}
+
+function irAMisReservas() {
+  reserva.limpiar()
+  router.push({ name: 'mis-reservas' })
 }
 
 function terminar() {
@@ -144,11 +151,14 @@ function terminar() {
     <!-- Reserva creada -->
     <section v-if="finalizada" class="tarjeta exito">
       <h2>¡Reserva creada!</h2>
-      <p>Tus asientos quedaron reservados con estado <strong>pendiente de pago</strong>. El pago se habilitará en la siguiente etapa.</p>
+      <p>Tus asientos quedaron reservados con estado <strong>pendiente de pago</strong>. Registra tu pago desde «Mis reservas» para recibir tus boletos.</p>
       <ul class="lista-resumen">
         <li v-for="(p, i) in reserva.pasajeros" :key="i"><span>{{ p.nombres }} · asiento {{ p.asiento }}</span><b>{{ dinero(reserva.creadas[i]?.precio ?? 0) }}</b></li>
       </ul>
-      <button class="btn" type="button" @click="terminar">Volver al inicio</button>
+      <div class="acciones">
+        <button class="btn sec" type="button" @click="terminar">Volver al inicio</button>
+        <button class="btn" type="button" @click="irAMisReservas">Ir a pagar →</button>
+      </div>
     </section>
 
     <template v-else>

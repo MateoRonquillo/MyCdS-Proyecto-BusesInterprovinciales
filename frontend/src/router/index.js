@@ -29,6 +29,12 @@ const routes = [
         component: () => import('../views/cliente/ReservaView.vue'),
         meta: { requiresAuth: true, role: 'CLIENTE' },
       },
+      {
+        path: 'mis-reservas',
+        name: 'mis-reservas',
+        component: () => import('../views/cliente/MisReservasView.vue'),
+        meta: { requiresAuth: true, role: 'CLIENTE' },
+      },
     ],
   },
   ...adminRoutes,
@@ -44,7 +50,6 @@ router.beforeEach((to) => {
   const auth = useAuthStore()
   const esPersonal = auth.estaAutenticado && auth.rolFront !== 'CLIENTE'
 
-  // Rutas protegidas (admin / oficinista)
   if (to.meta.requiresAuth) {
     if (!auth.estaAutenticado) {
       return { name: 'login', query: { redirect: to.fullPath } }
@@ -52,15 +57,13 @@ router.beforeEach((to) => {
     const permitido =
       !to.meta.role ||
       auth.rolFront === to.meta.role ||
-      auth.rolFront === 'ADMINISTRADOR' // el admin puede ver ambos paneles
+      auth.rolFront === 'ADMINISTRADOR'
     if (!permitido) return auth.rutaInicio
     return
   }
 
-  // Rutas públicas: el personal interno no las usa, va a su panel
   if (esPersonal) return auth.rutaInicio
 
-  // Un cliente ya logueado no necesita volver al login
   if (to.name === 'login' && auth.estaAutenticado) return auth.rutaInicio
 })
 
