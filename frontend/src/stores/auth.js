@@ -9,7 +9,6 @@ const leerUsuario = () => {
   }
 }
 
-// El backend usa 'admin' y 'oficinista'; el router usa estos nombres
 const ROL_FRONT = { admin: 'ADMINISTRADOR', oficinista: 'OFICINISTA' }
 
 export const useAuthStore = defineStore('auth', {
@@ -41,6 +40,7 @@ export const useAuthStore = defineStore('auth', {
       this.usuario = null
       localStorage.removeItem('token')
       localStorage.removeItem('usuario')
+      localStorage.removeItem('pasajeros-por-reserva')
     },
   },
 })
