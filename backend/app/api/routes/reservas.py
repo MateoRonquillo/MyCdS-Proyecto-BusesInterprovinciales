@@ -24,7 +24,8 @@ from app.services.tarifas import calcular_pasajero
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
 TRANSICIONES_VALIDAS: dict[str, set[str]] = {
-    "PENDIENTE": {"PAGADA", "CONFIRMADA", "CANCELADA", "EXPIRADA"},
+    "PENDIENTE": {"PAGO_EN_REVISION", "PAGADA", "CONFIRMADA", "CANCELADA", "EXPIRADA"},
+    "PAGO_EN_REVISION": {"PAGADA", "CONFIRMADA", "PENDIENTE", "CANCELADA", "EXPIRADA"},
     "PAGADA": {"CONFIRMADA", "CANCELADA"},
     "CONFIRMADA": {"CANCELADA"},
     "CANCELADA": set(),
@@ -67,7 +68,7 @@ def _check_seat(
         Reserva.frecuencia_id == frequency.id,
         Reserva.fecha_viaje == travel_date,
         Reserva.asiento == seat,
-        Reserva.estado != "CANCELADA",
+        Reserva.estado.not_in(["CANCELADA", "EXPIRADA"]),
     )
     if exclude_id is not None:
         query = query.where(Reserva.id != exclude_id)
@@ -96,7 +97,7 @@ def get_seat_availability(
     query = select(Reserva.asiento).where(
         Reserva.frecuencia_id == frequency.id,
         Reserva.fecha_viaje == fecha,
-        Reserva.estado != "CANCELADA",
+        Reserva.estado.not_in(["CANCELADA", "EXPIRADA"]),
     )
     occupied_seats = sorted(list(db.scalars(query)))
     all_seats = list(range(1, bus.capacidad_asientos + 1))
@@ -257,8 +258,8 @@ def cancel_reservation(
     reservation = _owned_reservation(db, reservation_id, user)
     if reservation.estado == "CANCELADA":
         raise HTTPException(status_code=409, detail="La reserva ya está cancelada")
-    if reservation.estado != "PENDIENTE":
-        raise HTTPException(status_code=409, detail="Solo se pueden cancelar reservas pendientes")
+    if reservation.estado not in {"PENDIENTE", "PAGO_EN_REVISION"}:
+        raise HTTPException(status_code=409, detail="Solo se pueden cancelar reservas pendientes o en revisión de pago")
     reservation.estado = "CANCELADA"
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -296,7 +297,7 @@ def update_reservation_status(
         )
 
     # Validar que no se pague o confirme una reserva cuyo viaje ya venció
-    if estado_actual == "PENDIENTE" and nuevo_estado in {"PAGADA", "CONFIRMADA"}:
+    if estado_actual in {"PENDIENTE", "PAGO_EN_REVISION"} and nuevo_estado in {"PAGADA", "CONFIRMADA"}:
         if reservation.fecha_viaje < date.today():
             reservation.estado = "EXPIRADA"
             db.commit()

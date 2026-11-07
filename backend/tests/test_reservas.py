@@ -308,3 +308,69 @@ def test_no_permite_pagar_reserva_vencida_y_la_marca_expirada(reserva_client: Te
     # 3. Comprobar que en base de datos quedó actualizada como EXPIRADA
     db.refresh(reserva_vencida)
     assert reserva_vencida.estado == "EXPIRADA"
+
+
+
+def test_asiento_expirado_queda_disponible_para_nueva_reserva(reserva_client: TestClient):
+    from app.models.core_models import Reserva
+
+    app = reserva_client.app
+    get_db_override = app.dependency_overrides[get_db]
+    db = next(get_db_override())
+
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+
+    # 1. Crear reserva expirada directamente en el asiento 10
+    reserva_exp = Reserva(
+        usuario_id=1,
+        frecuencia_id=1,
+        fecha_viaje=date.today() + timedelta(days=7),
+        asiento=10,
+        tipo_pasajero="GENERAL",
+        precio=12.50,
+        estado="EXPIRADA",
+    )
+    db.add(reserva_exp)
+    db.commit()
+
+    # 2. El mapa de disponibilidad debe mostrar el asiento 10 disponible
+    disp = reserva_client.get(f"/api/v1/reservas/disponibilidad/1?fecha={fecha}")
+    assert disp.status_code == 200
+    assert 10 in disp.json()["asientos_disponibles"]
+    assert 10 not in disp.json()["asientos_ocupados"]
+
+    # 3. Debe permitir reservar nuevamente ese asiento 10 sin colisión
+    nueva = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 10, "tipo_pasajero": "GENERAL"},
+    )
+    assert nueva.status_code == 201
+    assert nueva.json()["asiento"] == 10
+
+
+def test_transicion_pago_en_revision_consistente(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=8)).isoformat()
+    creada = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 1, "tipo_pasajero": "GENERAL"},
+    )
+    res_id = creada.json()["id"]
+
+    app = reserva_client.app
+    original_user = app.dependency_overrides[get_current_user]
+    admin_user = Usuario(id=1, nombre="Admin", correo="admin@test.com", cedula="1111111111", rol="admin", activo=True)
+
+    try:
+        app.dependency_overrides[get_current_user] = lambda: admin_user
+
+        # Pasar a PAGO_EN_REVISION
+        rev = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGO_EN_REVISION"})
+        assert rev.status_code == 200
+        assert rev.json()["estado"] == "PAGO_EN_REVISION"
+
+        # Pasar de PAGO_EN_REVISION a CONFIRMADA
+        conf = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "CONFIRMADA"})
+        assert conf.status_code == 200
+        assert conf.json()["estado"] == "CONFIRMADA"
+    finally:
+        app.dependency_overrides[get_current_user] = original_user
