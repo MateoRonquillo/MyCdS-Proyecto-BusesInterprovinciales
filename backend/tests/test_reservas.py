@@ -12,6 +12,16 @@ from app.api.dependencies import get_current_user
 
 
 @pytest.fixture
+def comprobante_pago():
+    import base64
+    from io import BytesIO
+    from PIL import Image
+    imagen = BytesIO()
+    Image.new("RGB", (2, 2), "white").save(imagen, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(imagen.getvalue()).decode()
+
+
+@pytest.fixture
 def reserva_client():
     engine = create_engine(
         "sqlite://",
@@ -257,10 +267,10 @@ def test_consistencia_transicion_estados_reserva(reserva_client: TestClient):
     try:
         app.dependency_overrides[get_current_user] = admin_user
 
-        # 1. Transición válida: PENDIENTE -> PAGADA
+        # 1. Una reserva no puede pagarse al margen del registro de pagos
         ok_resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGADA"})
-        assert ok_resp.status_code == 200
-        assert ok_resp.json()["estado"] == "PAGADA"
+        assert ok_resp.status_code == 409
+        assert "aprobación de pagos" in ok_resp.json()["error"]["message"]
 
         # 2. Cancelar la reserva
         cancel_resp = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "CANCELADA"})
@@ -310,7 +320,7 @@ def test_no_permite_pagar_reserva_vencida_y_la_marca_expirada(reserva_client: Te
     assert reserva_vencida.estado == "EXPIRADA"
 
 
-def test_pago_pendiente_no_genera_qr(reserva_client):
+def test_pago_pendiente_no_genera_qr(reserva_client, comprobante_pago):
     fecha = (date.today() + timedelta(days=7)).isoformat()
 
     # Crear una reserva
@@ -325,7 +335,9 @@ def test_pago_pendiente_no_genera_qr(reserva_client):
     # Registrar un pago
     pago = reserva_client.post("/api/v1/pagos", json={
         "reserva_id": reserva.json()["id"],
-        "metodo_pago": "EFECTIVO",
+        "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago,
         "monto": 12.50
     })
     assert pago.status_code == 201
@@ -344,7 +356,7 @@ def test_pago_pendiente_no_genera_qr(reserva_client):
     assert qr.status_code == 409
 
 
-def test_pago_aprobado_genera_qr(reserva_client):
+def test_pago_aprobado_genera_qr(reserva_client, comprobante_pago):
     fecha = (date.today() + timedelta(days=7)).isoformat()
 
     # Crear reserva y pago
@@ -358,7 +370,9 @@ def test_pago_aprobado_genera_qr(reserva_client):
 
     pago = reserva_client.post("/api/v1/pagos", json={
         "reserva_id": reserva.json()["id"],
-        "metodo_pago": "EFECTIVO",
+        "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago,
         "monto": 12.50
     })
     assert pago.status_code == 201
@@ -397,7 +411,7 @@ def test_pago_aprobado_genera_qr(reserva_client):
 
 
 
-def test_pago_con_monto_incorrecto(reserva_client):
+def test_pago_con_monto_incorrecto(reserva_client, comprobante_pago):
     fecha = (date.today() + timedelta(days=7)).isoformat()
 
     # Crear una reserva de $12.50
@@ -412,7 +426,9 @@ def test_pago_con_monto_incorrecto(reserva_client):
     # Intentar pagar solo $10
     pago = reserva_client.post("/api/v1/pagos", json={
         "reserva_id": reserva.json()["id"],
-        "metodo_pago": "EFECTIVO",
+        "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago,
         "monto": 10.00
     })
 
@@ -420,7 +436,7 @@ def test_pago_con_monto_incorrecto(reserva_client):
     assert pago.status_code == 422
 
 
-def test_no_permite_pago_duplicado(reserva_client):
+def test_no_permite_pago_duplicado(reserva_client, comprobante_pago):
     fecha = (date.today() + timedelta(days=8)).isoformat()
 
     # Crear reserva
@@ -435,7 +451,9 @@ def test_no_permite_pago_duplicado(reserva_client):
     # Datos del pago
     datos = {
         "reserva_id": reserva.json()["id"],
-        "metodo_pago": "EFECTIVO",
+        "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago,
         "monto": 12.50
     }
 
@@ -448,7 +466,7 @@ def test_no_permite_pago_duplicado(reserva_client):
     assert segundo.status_code == 409
 
 
-def test_rechazo_de_pago(reserva_client):
+def test_rechazo_de_pago(reserva_client, comprobante_pago):
     fecha = (date.today() + timedelta(days=9)).isoformat()
 
     # Crear reserva
@@ -464,7 +482,9 @@ def test_rechazo_de_pago(reserva_client):
     # Registrar pago
     pago = reserva_client.post("/api/v1/pagos", json={
         "reserva_id": reserva_id,
-        "metodo_pago": "EFECTIVO",
+        "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago,
         "monto": 12.50
     })
     assert pago.status_code == 201
@@ -542,13 +562,15 @@ def test_asiento_expirado_queda_disponible_para_nueva_reserva(reserva_client: Te
     assert nueva.json()["asiento"] == 10
 
 
-def test_transicion_pago_en_revision_consistente(reserva_client: TestClient):
+def test_transicion_pago_en_revision_consistente(reserva_client: TestClient, comprobante_pago):
     fecha = (date.today() + timedelta(days=8)).isoformat()
     creada = reserva_client.post(
         "/api/v1/reservas",
         json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 1, "tipo_pasajero": "GENERAL"},
     )
     res_id = creada.json()["id"]
+    pago = reserva_client.post("/api/v1/pagos", json={"reserva_id": res_id, "metodo_pago": "TRANSFERENCIA", "referencia": "TRANSICION", "comprobante": comprobante_pago, "monto": 12.50})
+    assert pago.status_code == 201
 
     app = reserva_client.app
     original_user = app.dependency_overrides[get_current_user]
@@ -562,14 +584,17 @@ def test_transicion_pago_en_revision_consistente(reserva_client: TestClient):
         assert rev.status_code == 200
         assert rev.json()["estado"] == "PAGO_EN_REVISION"
 
-        # Pasar de PAGO_EN_REVISION a CONFIRMADA
+        # El cambio directo no puede saltarse la aprobación del pago.
         conf = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "CONFIRMADA"})
-        assert conf.status_code == 200
-        assert conf.json()["estado"] == "CONFIRMADA"
+        assert conf.status_code == 409
+        aprobado = reserva_client.post(f"/api/v1/pagos/{pago.json()['id']}/aprobar")
+        assert aprobado.status_code == 200
+        consulta = reserva_client.get(f"/api/v1/reservas/{res_id}")
+        assert consulta.json()["estado"] == "CONFIRMADA"
     finally:
         app.dependency_overrides[get_current_user] = original_user
 
-def test_cancelar_reserva_en_revision_sincroniza_pago_a_rechazado(reserva_client: TestClient):
+def test_cancelar_reserva_en_revision_sincroniza_pago_a_rechazado(reserva_client: TestClient, comprobante_pago):
     fecha = (date.today() + timedelta(days=9)).isoformat()
 
     # 1. Crear reserva
@@ -583,7 +608,9 @@ def test_cancelar_reserva_en_revision_sincroniza_pago_a_rechazado(reserva_client
     # 2. Registrar pago -> la reserva pasa a PAGO_EN_REVISION y el pago a PENDIENTE
     pago_resp = reserva_client.post(
         "/api/v1/pagos",
-        json={"reserva_id": res_id, "metodo_pago": "EFECTIVO", "monto": 12.50},
+        json={"reserva_id": res_id, "metodo_pago": "TRANSFERENCIA",
+        "referencia": "PRUEBA-INTEGRACION",
+        "comprobante": comprobante_pago, "monto": 12.50},
     )
     assert pago_resp.status_code == 201
     pago_id = pago_resp.json()["id"]

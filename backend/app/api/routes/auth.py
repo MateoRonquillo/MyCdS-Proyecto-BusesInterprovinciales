@@ -31,3 +31,22 @@ def login(
 @router.get("/me", response_model=UserResponse, summary="Obtener usuario actual")
 def read_current_user(user: Usuario = Depends(get_current_user)) -> Usuario:
     return user
+
+from pwdlib import PasswordHash
+from sqlalchemy.exc import IntegrityError
+from app.schemas.auth import RegistroRequest
+
+
+@router.post("/registro", response_model=UserResponse, status_code=201)
+def registro(payload: RegistroRequest, db: Session = Depends(get_db)):
+    # La API pública siempre crea clientes. Los otros roles se provisionan por CLI.
+    usuario = Usuario(nombre=payload.nombre.strip(), correo=payload.correo.strip().lower(), cedula=payload.cedula,
+        rol="cliente", password_hash=PasswordHash.recommended().hash(payload.password))
+    db.add(usuario)
+    try:
+        db.commit()
+        db.refresh(usuario)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Correo o cédula ya registrados") from None
+    return usuario

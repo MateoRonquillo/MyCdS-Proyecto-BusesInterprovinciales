@@ -5,6 +5,7 @@ from app.api.dependencies import get_current_user
 from app.db.database import get_db
 from app.models.core_models import Frecuencia, Usuario
 from app.schemas.tarifas import CalculoTarifaRequest, CalculoTarifaResponse
+from app.services.operacion import tramo
 from app.services.tarifas import TipoPasajero, calcular_pasajero
 
 router = APIRouter(prefix="/tarifas", tags=["tarifas"])
@@ -27,12 +28,13 @@ def calculate_fare(
     passenger_types = payload.tipos_pasajero or [
         TipoPasajero.GENERAL
     ] * (payload.cantidad_pasajeros or 1)
-    unit_price = round(frequency.precio, 2)
+    puntos, destino = tramo(db, frequency, payload.origen_orden, payload.destino_orden)
+    unit_price = round(frequency.precio * (puntos[destino][2] - puntos[payload.origen_orden][2]), 2)
     detail = []
     discount_total = 0.0
     fare_total = 0.0
     for passenger_type in passenger_types:
-        base, discount, passenger_total = calcular_pasajero(frequency.precio, passenger_type)
+        base, discount, passenger_total = calcular_pasajero(unit_price, passenger_type)
         discount_total += float(discount)
         fare_total += float(passenger_total)
         detail.append({

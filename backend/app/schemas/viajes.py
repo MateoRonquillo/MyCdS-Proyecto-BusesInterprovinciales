@@ -22,6 +22,17 @@ class ViajeResponse(BaseModel):
     precio: float
     asientos_disponibles: int
     tipo_bus: str | None = None
+    origen_orden: int = 0
+    destino_orden: int = 1
+    bus_id: int = 0
+    placa: str = ""
+    numero_disco: str = ""
+    chasis: str = ""
+    carroceria: str = ""
+    fotografia_url: str | None = None
+    tipo_viaje: str = "DIRECTO"
+    tipos_asiento: list[str] = []
+    asientos_vip: list[int] = []
 
 
 class ViajesResponse(BaseModel):

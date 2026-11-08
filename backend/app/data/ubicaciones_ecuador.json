@@ -1,0 +1,1489 @@
+{
+  "fuente": "https://aplicaciones2.ecuadorencifras.gob.ec/SIN/descargas/cge2026.pdf",
+  "edicion": "CGE 2026, actualizado al 31 de diciembre de 2025",
+  "provincias": [
+    {
+      "id": "01",
+      "nombre": "Azuay",
+      "ciudades": [
+        {
+          "id": "0101",
+          "nombre": "Cuenca",
+          "valor": "Cuenca",
+          "alias": []
+        },
+        {
+          "id": "0102",
+          "nombre": "Girón",
+          "valor": "Girón",
+          "alias": []
+        },
+        {
+          "id": "0103",
+          "nombre": "Gualaceo",
+          "valor": "Gualaceo",
+          "alias": []
+        },
+        {
+          "id": "0104",
+          "nombre": "Nabón",
+          "valor": "Nabón",
+          "alias": []
+        },
+        {
+          "id": "0105",
+          "nombre": "Paute",
+          "valor": "Paute",
+          "alias": []
+        },
+        {
+          "id": "0106",
+          "nombre": "Pucará",
+          "valor": "Pucará",
+          "alias": []
+        },
+        {
+          "id": "0107",
+          "nombre": "San Fernando",
+          "valor": "San Fernando",
+          "alias": []
+        },
+        {
+          "id": "0108",
+          "nombre": "Santa Isabel",
+          "valor": "Santa Isabel",
+          "alias": []
+        },
+        {
+          "id": "0109",
+          "nombre": "Sígsig",
+          "valor": "Sígsig",
+          "alias": []
+        },
+        {
+          "id": "0110",
+          "nombre": "San Felipe de Oña",
+          "valor": "San Felipe de Oña",
+          "alias": []
+        },
+        {
+          "id": "0111",
+          "nombre": "Chordeleg",
+          "valor": "Chordeleg",
+          "alias": []
+        },
+        {
+          "id": "0112",
+          "nombre": "El Pan",
+          "valor": "El Pan",
+          "alias": []
+        },
+        {
+          "id": "0113",
+          "nombre": "Sevilla de Oro",
+          "valor": "Sevilla de Oro",
+          "alias": []
+        },
+        {
+          "id": "0114",
+          "nombre": "Guachapala",
+          "valor": "Guachapala",
+          "alias": []
+        },
+        {
+          "id": "0115",
+          "nombre": "Camilo Ponce Enríquez",
+          "valor": "Camilo Ponce Enríquez",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "nombre": "Bolívar",
+      "ciudades": [
+        {
+          "id": "0201",
+          "nombre": "Guaranda",
+          "valor": "Guaranda",
+          "alias": []
+        },
+        {
+          "id": "0202",
+          "nombre": "Chillanes",
+          "valor": "Chillanes",
+          "alias": []
+        },
+        {
+          "id": "0203",
+          "nombre": "San José de Chimbo",
+          "valor": "San José de Chimbo",
+          "alias": []
+        },
+        {
+          "id": "0204",
+          "nombre": "Echeandía",
+          "valor": "Echeandía",
+          "alias": []
+        },
+        {
+          "id": "0205",
+          "nombre": "San Miguel",
+          "valor": "San Miguel (Bolívar)",
+          "alias": []
+        },
+        {
+          "id": "0206",
+          "nombre": "Caluma",
+          "valor": "Caluma",
+          "alias": []
+        },
+        {
+          "id": "0207",
+          "nombre": "Las Naves",
+          "valor": "Las Naves",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "nombre": "Cañar",
+      "ciudades": [
+        {
+          "id": "0301",
+          "nombre": "Azogues",
+          "valor": "Azogues",
+          "alias": []
+        },
+        {
+          "id": "0302",
+          "nombre": "Biblián",
+          "valor": "Biblián",
+          "alias": []
+        },
+        {
+          "id": "0303",
+          "nombre": "Cañar",
+          "valor": "Cañar",
+          "alias": []
+        },
+        {
+          "id": "0304",
+          "nombre": "La Troncal",
+          "valor": "La Troncal",
+          "alias": []
+        },
+        {
+          "id": "0305",
+          "nombre": "El Tambo",
+          "valor": "El Tambo",
+          "alias": []
+        },
+        {
+          "id": "0306",
+          "nombre": "Déleg",
+          "valor": "Déleg",
+          "alias": []
+        },
+        {
+          "id": "0307",
+          "nombre": "Suscal",
+          "valor": "Suscal",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "nombre": "Carchi",
+      "ciudades": [
+        {
+          "id": "0401",
+          "nombre": "Tulcán",
+          "valor": "Tulcán",
+          "alias": []
+        },
+        {
+          "id": "0402",
+          "nombre": "Bolívar",
+          "valor": "Bolívar",
+          "alias": []
+        },
+        {
+          "id": "0403",
+          "nombre": "El Ángel",
+          "valor": "El Ángel",
+          "alias": []
+        },
+        {
+          "id": "0404",
+          "nombre": "Mira",
+          "valor": "Mira",
+          "alias": []
+        },
+        {
+          "id": "0405",
+          "nombre": "San Gabriel",
+          "valor": "San Gabriel",
+          "alias": []
+        },
+        {
+          "id": "0406",
+          "nombre": "Huaca",
+          "valor": "Huaca",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "nombre": "Cotopaxi",
+      "ciudades": [
+        {
+          "id": "0501",
+          "nombre": "Latacunga",
+          "valor": "Latacunga",
+          "alias": []
+        },
+        {
+          "id": "0502",
+          "nombre": "La Maná",
+          "valor": "La Maná",
+          "alias": []
+        },
+        {
+          "id": "0503",
+          "nombre": "El Corazón",
+          "valor": "El Corazón",
+          "alias": []
+        },
+        {
+          "id": "0504",
+          "nombre": "Pujilí",
+          "valor": "Pujilí",
+          "alias": []
+        },
+        {
+          "id": "0505",
+          "nombre": "San Miguel",
+          "valor": "San Miguel (Cotopaxi)",
+          "alias": []
+        },
+        {
+          "id": "0506",
+          "nombre": "Saquisilí",
+          "valor": "Saquisilí",
+          "alias": []
+        },
+        {
+          "id": "0507",
+          "nombre": "Sigchos",
+          "valor": "Sigchos",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "nombre": "Chimborazo",
+      "ciudades": [
+        {
+          "id": "0601",
+          "nombre": "Riobamba",
+          "valor": "Riobamba",
+          "alias": []
+        },
+        {
+          "id": "0602",
+          "nombre": "Alausí",
+          "valor": "Alausí",
+          "alias": []
+        },
+        {
+          "id": "0603",
+          "nombre": "Villa La Unión",
+          "valor": "Villa La Unión",
+          "alias": []
+        },
+        {
+          "id": "0604",
+          "nombre": "Chambo",
+          "valor": "Chambo",
+          "alias": []
+        },
+        {
+          "id": "0605",
+          "nombre": "Chunchi",
+          "valor": "Chunchi",
+          "alias": []
+        },
+        {
+          "id": "0606",
+          "nombre": "Guamote",
+          "valor": "Guamote",
+          "alias": []
+        },
+        {
+          "id": "0607",
+          "nombre": "Guano",
+          "valor": "Guano",
+          "alias": []
+        },
+        {
+          "id": "0608",
+          "nombre": "Pallatanga",
+          "valor": "Pallatanga",
+          "alias": []
+        },
+        {
+          "id": "0609",
+          "nombre": "Penipe",
+          "valor": "Penipe",
+          "alias": []
+        },
+        {
+          "id": "0610",
+          "nombre": "Cumandá",
+          "valor": "Cumandá",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "nombre": "El Oro",
+      "ciudades": [
+        {
+          "id": "0701",
+          "nombre": "Machala",
+          "valor": "Machala",
+          "alias": []
+        },
+        {
+          "id": "0702",
+          "nombre": "Arenillas",
+          "valor": "Arenillas",
+          "alias": []
+        },
+        {
+          "id": "0703",
+          "nombre": "Paccha",
+          "valor": "Paccha",
+          "alias": []
+        },
+        {
+          "id": "0704",
+          "nombre": "Balsas",
+          "valor": "Balsas",
+          "alias": []
+        },
+        {
+          "id": "0705",
+          "nombre": "Chilla",
+          "valor": "Chilla",
+          "alias": []
+        },
+        {
+          "id": "0706",
+          "nombre": "El Guabo",
+          "valor": "El Guabo",
+          "alias": []
+        },
+        {
+          "id": "0707",
+          "nombre": "Huaquillas",
+          "valor": "Huaquillas",
+          "alias": []
+        },
+        {
+          "id": "0708",
+          "nombre": "Marcabelí",
+          "valor": "Marcabelí",
+          "alias": []
+        },
+        {
+          "id": "0709",
+          "nombre": "Pasaje",
+          "valor": "Pasaje",
+          "alias": []
+        },
+        {
+          "id": "0710",
+          "nombre": "Piñas",
+          "valor": "Piñas",
+          "alias": []
+        },
+        {
+          "id": "0711",
+          "nombre": "Portovelo",
+          "valor": "Portovelo",
+          "alias": []
+        },
+        {
+          "id": "0712",
+          "nombre": "Santa Rosa",
+          "valor": "Santa Rosa",
+          "alias": []
+        },
+        {
+          "id": "0713",
+          "nombre": "Zaruma",
+          "valor": "Zaruma",
+          "alias": []
+        },
+        {
+          "id": "0714",
+          "nombre": "La Victoria",
+          "valor": "La Victoria",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "08",
+      "nombre": "Esmeraldas",
+      "ciudades": [
+        {
+          "id": "0801",
+          "nombre": "Esmeraldas",
+          "valor": "Esmeraldas",
+          "alias": []
+        },
+        {
+          "id": "0802",
+          "nombre": "Valdez (Limones)",
+          "valor": "Valdez (Limones)",
+          "alias": []
+        },
+        {
+          "id": "0803",
+          "nombre": "Muisne",
+          "valor": "Muisne",
+          "alias": []
+        },
+        {
+          "id": "0804",
+          "nombre": "Rosa Zárate",
+          "valor": "Rosa Zárate",
+          "alias": []
+        },
+        {
+          "id": "0805",
+          "nombre": "San Lorenzo",
+          "valor": "San Lorenzo",
+          "alias": []
+        },
+        {
+          "id": "0806",
+          "nombre": "Atacames",
+          "valor": "Atacames",
+          "alias": []
+        },
+        {
+          "id": "0807",
+          "nombre": "Ríoverde",
+          "valor": "Ríoverde",
+          "alias": []
+        },
+        {
+          "id": "0808",
+          "nombre": "*La Concordia",
+          "valor": "*La Concordia",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "nombre": "Guayas",
+      "ciudades": [
+        {
+          "id": "0901",
+          "nombre": "Guayaquil",
+          "valor": "Guayaquil",
+          "alias": []
+        },
+        {
+          "id": "0902",
+          "nombre": "Alfredo Baquerizo Moreno (Juján)",
+          "valor": "Alfredo Baquerizo Moreno (Juján)",
+          "alias": []
+        },
+        {
+          "id": "0903",
+          "nombre": "Balao",
+          "valor": "Balao",
+          "alias": []
+        },
+        {
+          "id": "0904",
+          "nombre": "Balzar",
+          "valor": "Balzar",
+          "alias": []
+        },
+        {
+          "id": "0905",
+          "nombre": "Colimes",
+          "valor": "Colimes",
+          "alias": []
+        },
+        {
+          "id": "0906",
+          "nombre": "Daule",
+          "valor": "Daule",
+          "alias": []
+        },
+        {
+          "id": "0907",
+          "nombre": "Eloy Alfaro",
+          "valor": "Eloy Alfaro",
+          "alias": []
+        },
+        {
+          "id": "0908",
+          "nombre": "Velasco Ibarra",
+          "valor": "Velasco Ibarra",
+          "alias": []
+        },
+        {
+          "id": "0909",
+          "nombre": "El Triunfo",
+          "valor": "El Triunfo",
+          "alias": []
+        },
+        {
+          "id": "0910",
+          "nombre": "Milagro",
+          "valor": "Milagro",
+          "alias": []
+        },
+        {
+          "id": "0911",
+          "nombre": "Naranjal",
+          "valor": "Naranjal",
+          "alias": []
+        },
+        {
+          "id": "0912",
+          "nombre": "Naranjito",
+          "valor": "Naranjito",
+          "alias": []
+        },
+        {
+          "id": "0913",
+          "nombre": "Palestina",
+          "valor": "Palestina",
+          "alias": []
+        },
+        {
+          "id": "0914",
+          "nombre": "Pedro Carbo",
+          "valor": "Pedro Carbo",
+          "alias": []
+        },
+        {
+          "id": "0916",
+          "nombre": "Samborondón",
+          "valor": "Samborondón",
+          "alias": []
+        },
+        {
+          "id": "0918",
+          "nombre": "Santa Lucía",
+          "valor": "Santa Lucía",
+          "alias": []
+        },
+        {
+          "id": "0919",
+          "nombre": "El Salitre",
+          "valor": "El Salitre",
+          "alias": []
+        },
+        {
+          "id": "0920",
+          "nombre": "San Jacinto de Yaguachi",
+          "valor": "San Jacinto de Yaguachi",
+          "alias": []
+        },
+        {
+          "id": "0921",
+          "nombre": "General Villamil",
+          "valor": "General Villamil",
+          "alias": []
+        },
+        {
+          "id": "0922",
+          "nombre": "Simón Bolívar",
+          "valor": "Simón Bolívar",
+          "alias": []
+        },
+        {
+          "id": "0923",
+          "nombre": "Coronel Marcelino Maridueña",
+          "valor": "Coronel Marcelino Maridueña",
+          "alias": []
+        },
+        {
+          "id": "0924",
+          "nombre": "Lomas de Sargentillo",
+          "valor": "Lomas de Sargentillo",
+          "alias": []
+        },
+        {
+          "id": "0925",
+          "nombre": "Narcisa de Jesús",
+          "valor": "Narcisa de Jesús",
+          "alias": []
+        },
+        {
+          "id": "0927",
+          "nombre": "General Antonio Elizalde",
+          "valor": "General Antonio Elizalde",
+          "alias": []
+        },
+        {
+          "id": "0928",
+          "nombre": "Isidro Ayora",
+          "valor": "Isidro Ayora",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "nombre": "Imbabura",
+      "ciudades": [
+        {
+          "id": "1001",
+          "nombre": "San Miguel de Ibarra",
+          "valor": "San Miguel de Ibarra",
+          "alias": [
+            "Ibarra"
+          ]
+        },
+        {
+          "id": "1002",
+          "nombre": "Atuntaqui",
+          "valor": "Atuntaqui",
+          "alias": []
+        },
+        {
+          "id": "1003",
+          "nombre": "Cotacachi",
+          "valor": "Cotacachi",
+          "alias": []
+        },
+        {
+          "id": "1004",
+          "nombre": "Otavalo",
+          "valor": "Otavalo",
+          "alias": []
+        },
+        {
+          "id": "1005",
+          "nombre": "Pimampiro",
+          "valor": "Pimampiro",
+          "alias": []
+        },
+        {
+          "id": "1006",
+          "nombre": "Urcuquí",
+          "valor": "Urcuquí",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "nombre": "Loja",
+      "ciudades": [
+        {
+          "id": "1101",
+          "nombre": "Loja",
+          "valor": "Loja",
+          "alias": []
+        },
+        {
+          "id": "1102",
+          "nombre": "Cariamanga",
+          "valor": "Cariamanga",
+          "alias": []
+        },
+        {
+          "id": "1103",
+          "nombre": "Catamayo",
+          "valor": "Catamayo",
+          "alias": []
+        },
+        {
+          "id": "1104",
+          "nombre": "Celica",
+          "valor": "Celica",
+          "alias": []
+        },
+        {
+          "id": "1105",
+          "nombre": "Chaguarpamba",
+          "valor": "Chaguarpamba",
+          "alias": []
+        },
+        {
+          "id": "1106",
+          "nombre": "Amaluza",
+          "valor": "Amaluza",
+          "alias": []
+        },
+        {
+          "id": "1107",
+          "nombre": "Gonzanamá",
+          "valor": "Gonzanamá",
+          "alias": []
+        },
+        {
+          "id": "1108",
+          "nombre": "Macará",
+          "valor": "Macará",
+          "alias": []
+        },
+        {
+          "id": "1109",
+          "nombre": "Catacocha",
+          "valor": "Catacocha",
+          "alias": []
+        },
+        {
+          "id": "1110",
+          "nombre": "Alamor",
+          "valor": "Alamor",
+          "alias": []
+        },
+        {
+          "id": "1111",
+          "nombre": "Saraguro",
+          "valor": "Saraguro",
+          "alias": []
+        },
+        {
+          "id": "1112",
+          "nombre": "Sozoranga",
+          "valor": "Sozoranga",
+          "alias": []
+        },
+        {
+          "id": "1113",
+          "nombre": "Zapotillo",
+          "valor": "Zapotillo",
+          "alias": []
+        },
+        {
+          "id": "1114",
+          "nombre": "Pindal",
+          "valor": "Pindal",
+          "alias": []
+        },
+        {
+          "id": "1115",
+          "nombre": "Quilanga",
+          "valor": "Quilanga",
+          "alias": []
+        },
+        {
+          "id": "1116",
+          "nombre": "Olmedo",
+          "valor": "Olmedo (Loja)",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "nombre": "Los Ríos",
+      "ciudades": [
+        {
+          "id": "1201",
+          "nombre": "Babahoyo",
+          "valor": "Babahoyo",
+          "alias": []
+        },
+        {
+          "id": "1202",
+          "nombre": "Baba",
+          "valor": "Baba",
+          "alias": []
+        },
+        {
+          "id": "1203",
+          "nombre": "Montalvo",
+          "valor": "Montalvo",
+          "alias": []
+        },
+        {
+          "id": "1204",
+          "nombre": "Puebloviejo",
+          "valor": "Puebloviejo",
+          "alias": []
+        },
+        {
+          "id": "1205",
+          "nombre": "Quevedo",
+          "valor": "Quevedo",
+          "alias": []
+        },
+        {
+          "id": "1206",
+          "nombre": "Catarama",
+          "valor": "Catarama",
+          "alias": []
+        },
+        {
+          "id": "1207",
+          "nombre": "Ventanas",
+          "valor": "Ventanas",
+          "alias": []
+        },
+        {
+          "id": "1208",
+          "nombre": "Vinces",
+          "valor": "Vinces",
+          "alias": []
+        },
+        {
+          "id": "1209",
+          "nombre": "Palenque",
+          "valor": "Palenque",
+          "alias": []
+        },
+        {
+          "id": "1210",
+          "nombre": "San Jacinto de Buena Fé",
+          "valor": "San Jacinto de Buena Fé",
+          "alias": []
+        },
+        {
+          "id": "1211",
+          "nombre": "Valencia",
+          "valor": "Valencia",
+          "alias": []
+        },
+        {
+          "id": "1212",
+          "nombre": "Mocache",
+          "valor": "Mocache",
+          "alias": []
+        },
+        {
+          "id": "1213",
+          "nombre": "Quinsaloma",
+          "valor": "Quinsaloma",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "nombre": "Manabí",
+      "ciudades": [
+        {
+          "id": "1301",
+          "nombre": "Portoviejo",
+          "valor": "Portoviejo",
+          "alias": []
+        },
+        {
+          "id": "1302",
+          "nombre": "Calceta",
+          "valor": "Calceta",
+          "alias": []
+        },
+        {
+          "id": "1303",
+          "nombre": "Chone",
+          "valor": "Chone",
+          "alias": []
+        },
+        {
+          "id": "1304",
+          "nombre": "El Carmen",
+          "valor": "El Carmen",
+          "alias": []
+        },
+        {
+          "id": "1305",
+          "nombre": "Flavio Alfaro",
+          "valor": "Flavio Alfaro",
+          "alias": []
+        },
+        {
+          "id": "1306",
+          "nombre": "Jipijapa",
+          "valor": "Jipijapa",
+          "alias": []
+        },
+        {
+          "id": "1307",
+          "nombre": "Junín",
+          "valor": "Junín",
+          "alias": []
+        },
+        {
+          "id": "1308",
+          "nombre": "Manta",
+          "valor": "Manta",
+          "alias": []
+        },
+        {
+          "id": "1309",
+          "nombre": "Montecristi",
+          "valor": "Montecristi",
+          "alias": []
+        },
+        {
+          "id": "1310",
+          "nombre": "Paján",
+          "valor": "Paján",
+          "alias": []
+        },
+        {
+          "id": "1311",
+          "nombre": "Pichincha",
+          "valor": "Pichincha",
+          "alias": []
+        },
+        {
+          "id": "1312",
+          "nombre": "Rocafuerte",
+          "valor": "Rocafuerte",
+          "alias": []
+        },
+        {
+          "id": "1313",
+          "nombre": "Santa Ana de Vuelta Larga",
+          "valor": "Santa Ana de Vuelta Larga",
+          "alias": []
+        },
+        {
+          "id": "1314",
+          "nombre": "Bahía de Caráquez",
+          "valor": "Bahía de Caráquez",
+          "alias": []
+        },
+        {
+          "id": "1315",
+          "nombre": "Tosagua",
+          "valor": "Tosagua",
+          "alias": []
+        },
+        {
+          "id": "1316",
+          "nombre": "Sucre",
+          "valor": "Sucre",
+          "alias": []
+        },
+        {
+          "id": "1317",
+          "nombre": "Pedernales",
+          "valor": "Pedernales",
+          "alias": []
+        },
+        {
+          "id": "1318",
+          "nombre": "Olmedo",
+          "valor": "Olmedo (Manabí)",
+          "alias": []
+        },
+        {
+          "id": "1319",
+          "nombre": "Puerto López",
+          "valor": "Puerto López",
+          "alias": []
+        },
+        {
+          "id": "1320",
+          "nombre": "Jama",
+          "valor": "Jama",
+          "alias": []
+        },
+        {
+          "id": "1321",
+          "nombre": "Jaramijó",
+          "valor": "Jaramijó",
+          "alias": []
+        },
+        {
+          "id": "1322",
+          "nombre": "San Vicente",
+          "valor": "San Vicente",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "nombre": "Morona Santiago",
+      "ciudades": [
+        {
+          "id": "1401",
+          "nombre": "Macas",
+          "valor": "Macas",
+          "alias": []
+        },
+        {
+          "id": "1402",
+          "nombre": "Gualaquiza",
+          "valor": "Gualaquiza",
+          "alias": []
+        },
+        {
+          "id": "1403",
+          "nombre": "General Leonidas Plaza Gutiérrez",
+          "valor": "General Leonidas Plaza Gutiérrez",
+          "alias": []
+        },
+        {
+          "id": "1404",
+          "nombre": "Palora (Metzera)",
+          "valor": "Palora (Metzera)",
+          "alias": []
+        },
+        {
+          "id": "1405",
+          "nombre": "Santiago de Méndez",
+          "valor": "Santiago de Méndez",
+          "alias": []
+        },
+        {
+          "id": "1406",
+          "nombre": "Sucúa",
+          "valor": "Sucúa",
+          "alias": []
+        },
+        {
+          "id": "1407",
+          "nombre": "Huamboya",
+          "valor": "Huamboya",
+          "alias": []
+        },
+        {
+          "id": "1408",
+          "nombre": "San Juan Bosco",
+          "valor": "San Juan Bosco",
+          "alias": []
+        },
+        {
+          "id": "1409",
+          "nombre": "Taisha",
+          "valor": "Taisha",
+          "alias": []
+        },
+        {
+          "id": "1410",
+          "nombre": "Logroño",
+          "valor": "Logroño",
+          "alias": []
+        },
+        {
+          "id": "1411",
+          "nombre": "Pablo Sexto",
+          "valor": "Pablo Sexto",
+          "alias": []
+        },
+        {
+          "id": "1412",
+          "nombre": "Santiago",
+          "valor": "Santiago",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "nombre": "Napo",
+      "ciudades": [
+        {
+          "id": "1501",
+          "nombre": "Tena",
+          "valor": "Tena",
+          "alias": []
+        },
+        {
+          "id": "1503",
+          "nombre": "Archidona",
+          "valor": "Archidona",
+          "alias": []
+        },
+        {
+          "id": "1504",
+          "nombre": "El Chaco",
+          "valor": "El Chaco",
+          "alias": []
+        },
+        {
+          "id": "1507",
+          "nombre": "Baeza",
+          "valor": "Baeza",
+          "alias": []
+        },
+        {
+          "id": "1509",
+          "nombre": "Carlos Julio Arosemena Tola",
+          "valor": "Carlos Julio Arosemena Tola",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "16",
+      "nombre": "Pastaza",
+      "ciudades": [
+        {
+          "id": "1601",
+          "nombre": "Puyo",
+          "valor": "Puyo",
+          "alias": []
+        },
+        {
+          "id": "1602",
+          "nombre": "Mera",
+          "valor": "Mera",
+          "alias": []
+        },
+        {
+          "id": "1603",
+          "nombre": "Santa Clara",
+          "valor": "Santa Clara",
+          "alias": []
+        },
+        {
+          "id": "1604",
+          "nombre": "Arajuno",
+          "valor": "Arajuno",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "17",
+      "nombre": "Pichincha",
+      "ciudades": [
+        {
+          "id": "1701",
+          "nombre": "Quito",
+          "valor": "Quito",
+          "alias": []
+        },
+        {
+          "id": "1702",
+          "nombre": "Cayambe",
+          "valor": "Cayambe",
+          "alias": []
+        },
+        {
+          "id": "1703",
+          "nombre": "Machachi",
+          "valor": "Machachi",
+          "alias": []
+        },
+        {
+          "id": "1704",
+          "nombre": "Tabacundo",
+          "valor": "Tabacundo",
+          "alias": []
+        },
+        {
+          "id": "1705",
+          "nombre": "Sangolquí",
+          "valor": "Sangolquí",
+          "alias": []
+        },
+        {
+          "id": "1707",
+          "nombre": "San Miguel de los Bancos",
+          "valor": "San Miguel de los Bancos",
+          "alias": []
+        },
+        {
+          "id": "1708",
+          "nombre": "Pedro Vicente Maldonado",
+          "valor": "Pedro Vicente Maldonado",
+          "alias": []
+        },
+        {
+          "id": "1709",
+          "nombre": "Puerto Quito",
+          "valor": "Puerto Quito",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "18",
+      "nombre": "Tungurahua",
+      "ciudades": [
+        {
+          "id": "1801",
+          "nombre": "Ambato",
+          "valor": "Ambato",
+          "alias": []
+        },
+        {
+          "id": "1802",
+          "nombre": "Baños",
+          "valor": "Baños",
+          "alias": []
+        },
+        {
+          "id": "1803",
+          "nombre": "Cevallos",
+          "valor": "Cevallos",
+          "alias": []
+        },
+        {
+          "id": "1804",
+          "nombre": "Mocha",
+          "valor": "Mocha",
+          "alias": []
+        },
+        {
+          "id": "1805",
+          "nombre": "Patate",
+          "valor": "Patate",
+          "alias": []
+        },
+        {
+          "id": "1806",
+          "nombre": "Quero",
+          "valor": "Quero",
+          "alias": []
+        },
+        {
+          "id": "1807",
+          "nombre": "Pelileo",
+          "valor": "Pelileo",
+          "alias": []
+        },
+        {
+          "id": "1808",
+          "nombre": "Píllaro",
+          "valor": "Píllaro",
+          "alias": []
+        },
+        {
+          "id": "1809",
+          "nombre": "Tisaleo",
+          "valor": "Tisaleo",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "19",
+      "nombre": "Zamora Chinchipe",
+      "ciudades": [
+        {
+          "id": "1901",
+          "nombre": "Zamora",
+          "valor": "Zamora",
+          "alias": []
+        },
+        {
+          "id": "1902",
+          "nombre": "Zumba",
+          "valor": "Zumba",
+          "alias": []
+        },
+        {
+          "id": "1903",
+          "nombre": "Guayzimi",
+          "valor": "Guayzimi",
+          "alias": []
+        },
+        {
+          "id": "1904",
+          "nombre": "28 de Mayo",
+          "valor": "28 de Mayo",
+          "alias": []
+        },
+        {
+          "id": "1905",
+          "nombre": "Yantzaza",
+          "valor": "Yantzaza",
+          "alias": []
+        },
+        {
+          "id": "1906",
+          "nombre": "El Pangui",
+          "valor": "El Pangui",
+          "alias": []
+        },
+        {
+          "id": "1907",
+          "nombre": "Zumbi",
+          "valor": "Zumbi",
+          "alias": []
+        },
+        {
+          "id": "1908",
+          "nombre": "Palanda",
+          "valor": "Palanda",
+          "alias": []
+        },
+        {
+          "id": "1909",
+          "nombre": "Paquisha",
+          "valor": "Paquisha",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "20",
+      "nombre": "Galápagos",
+      "ciudades": [
+        {
+          "id": "2001",
+          "nombre": "Puerto Baquerizo Moreno",
+          "valor": "Puerto Baquerizo Moreno",
+          "alias": []
+        },
+        {
+          "id": "2002",
+          "nombre": "Puerto Villamil",
+          "valor": "Puerto Villamil",
+          "alias": []
+        },
+        {
+          "id": "2003",
+          "nombre": "Puerto Ayora",
+          "valor": "Puerto Ayora",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "21",
+      "nombre": "Sucumbíos",
+      "ciudades": [
+        {
+          "id": "2101",
+          "nombre": "Nueva Loja",
+          "valor": "Nueva Loja",
+          "alias": []
+        },
+        {
+          "id": "2102",
+          "nombre": "Lumbaquí",
+          "valor": "Lumbaquí",
+          "alias": []
+        },
+        {
+          "id": "2103",
+          "nombre": "Puerto El Carmen del Putumayo",
+          "valor": "Puerto El Carmen del Putumayo",
+          "alias": []
+        },
+        {
+          "id": "2104",
+          "nombre": "Shushufindi",
+          "valor": "Shushufindi",
+          "alias": []
+        },
+        {
+          "id": "2105",
+          "nombre": "La Bonita",
+          "valor": "La Bonita",
+          "alias": []
+        },
+        {
+          "id": "2106",
+          "nombre": "El Dorado de Cascales",
+          "valor": "El Dorado de Cascales",
+          "alias": []
+        },
+        {
+          "id": "2107",
+          "nombre": "Tarapoa",
+          "valor": "Tarapoa",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "22",
+      "nombre": "Orellana",
+      "ciudades": [
+        {
+          "id": "2201",
+          "nombre": "El Coca (Puerto Francisco de Orellana)",
+          "valor": "El Coca (Puerto Francisco de Orellana)",
+          "alias": [
+            "El Coca",
+            "Francisco de Orellana"
+          ]
+        },
+        {
+          "id": "2202",
+          "nombre": "Nuevo Rocafuerte",
+          "valor": "Nuevo Rocafuerte",
+          "alias": []
+        },
+        {
+          "id": "2203",
+          "nombre": "La Joya de los Sachas",
+          "valor": "La Joya de los Sachas",
+          "alias": []
+        },
+        {
+          "id": "2204",
+          "nombre": "Loreto",
+          "valor": "Loreto",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "23",
+      "nombre": "Santo Domingo de los Tsáchilas",
+      "ciudades": [
+        {
+          "id": "2301",
+          "nombre": "Santo Domingo de los Colorados",
+          "valor": "Santo Domingo de los Colorados",
+          "alias": [
+            "Santo Domingo"
+          ]
+        },
+        {
+          "id": "2302",
+          "nombre": "La Concordia",
+          "valor": "La Concordia",
+          "alias": []
+        }
+      ]
+    },
+    {
+      "id": "24",
+      "nombre": "Santa Elena",
+      "ciudades": [
+        {
+          "id": "2401",
+          "nombre": "Santa Elena",
+          "valor": "Santa Elena",
+          "alias": []
+        },
+        {
+          "id": "2402",
+          "nombre": "La Libertad",
+          "valor": "La Libertad",
+          "alias": []
+        },
+        {
+          "id": "2403",
+          "nombre": "Salinas",
+          "valor": "Salinas",
+          "alias": []
+        }
+      ]
+    }
+  ]
+}
