@@ -81,8 +81,8 @@ export async function obtenerDisponibilidad(viaje) {
     await pausa()
     return { capacidad: 40, ocupados: ocupadosMock(viaje) }
   }
-  const d = await pedir(`/reservas/disponibilidad/${viaje.id}?fecha=${viaje.fecha}`)
-  return { capacidad: d.capacidad_total, ocupados: d.asientos_ocupados }
+  const d = await pedir(`/reservas/disponibilidad/${viaje.id}?fecha=${viaje.fecha}&origen_orden=${viaje.origen_orden ?? 0}${viaje.destino_orden == null ? '' : `&destino_orden=${viaje.destino_orden}`}`)
+  return { capacidad: d.capacidad_total, ocupados: d.asientos_ocupados, mapa: d.mapa_asientos }
 }
 
 export async function calcularTarifa(viaje, tipos) {
@@ -90,7 +90,7 @@ export async function calcularTarifa(viaje, tipos) {
     await pausa(200)
     return tarifaMock(viaje, tipos)
   }
-  return pedir('/tarifas/calcular', { method: 'POST', body: JSON.stringify({ frecuencia_id: viaje.id, tipos_pasajero: tipos }) })
+  return pedir('/tarifas/calcular', { method: 'POST', body: JSON.stringify({ frecuencia_id: viaje.id, tipos_pasajero: tipos, origen_orden: viaje.origen_orden ?? 0, destino_orden: viaje.destino_orden }) })
 }
 
 export async function crearReservas(viaje, pasajeros) {
@@ -106,7 +106,7 @@ export async function crearReservas(viaje, pasajeros) {
       } else {
         creadas.push(await pedir('/reservas', {
           method: 'POST',
-          body: JSON.stringify({ frecuencia_id: viaje.id, fecha_viaje: viaje.fecha, asiento: p.asiento, tipo_pasajero: p.tipo }),
+          body: JSON.stringify({ frecuencia_id: viaje.id, fecha_viaje: viaje.fecha, asiento: p.asiento, tipo_pasajero: p.tipo, pasajero_nombre: p.nombres, pasajero_cedula: p.cedula, origen_orden: viaje.origen_orden ?? 0, destino_orden: viaje.destino_orden }),
         }))
       }
     }
