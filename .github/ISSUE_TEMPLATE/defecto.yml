@@ -1,0 +1,16 @@
+name: Reportar defecto
+description: Error reproducible en la aplicación.
+title: "[DEFECTO] "
+body:
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos, resultado obtenido y esperado
+    validations:
+      required: true
+  - type: textarea
+    id: entorno
+    attributes:
+      label: Versión, entorno y evidencia sin datos personales
+    validations:
+      required: true

@@ -1,0 +1,37 @@
+name: Solicitud de cambio
+description: Registrar alcance, impacto y decisión del comité de cambios.
+title: "[CAMBIO] "
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema y comportamiento esperado
+      description: Incluya un ejemplo y el requisito afectado.
+    validations:
+      required: true
+  - type: input
+    id: solicitud
+    attributes:
+      label: Solicitud Jira o identificador local
+    validations:
+      required: true
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto, prioridad y riesgos
+      description: Código, datos, documentación, compatibilidad y reversión.
+    validations:
+      required: true
+  - type: textarea
+    id: aceptacion
+    attributes:
+      label: Criterios de aceptación y validación
+    validations:
+      required: true
+  - type: textarea
+    id: responsables
+    attributes:
+      label: Responsable y comité de cambios
+      description: Asigne un responsable y uno o dos miembros del comité; registre aquí la decisión real y su fecha.
+    validations:
+      required: true

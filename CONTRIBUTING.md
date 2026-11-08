@@ -13,7 +13,15 @@ El proyecto utiliza GitFlow para organizar el desarrollo mediante ramas:
 - `feature/*`: permite desarrollar nuevas funcionalidades.
 - `release/*`: prepara versiones para su publicación.
 - `hotfix/*`: corrige errores críticos de versiones estables.
-- `docs/*`: permite realizar cambios específicos de documentación.
+
+Estas son las únicas familias de ramas admitidas. Los cambios de documentación,
+pruebas y mantenimiento se realizan en `feature/*`, o dentro de `release/*` si
+forman parte de su estabilización. No se utilizan prefijos alternativos.
+
+Las ramas `feature/*` nacen de `develop` y se integran en `develop`. Las ramas
+`release/*` nacen de `develop` y al aprobarse se integran en `main` y `develop`.
+Las ramas `hotfix/*` nacen de `main` y se reintegran en `main` y `develop`.
+La publicación se identifica con un tag de versión aprobado por el equipo.
 
 Cada integrante debe trabajar en una rama independiente y evitar modificar directamente `main` o `develop`.
 
