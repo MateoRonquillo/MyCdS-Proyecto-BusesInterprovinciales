@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import FiltrosViajes from '../../components/cliente/FiltrosViajes.vue'
 import ListaViajes from '../../components/cliente/ListaViajes.vue'
 import { useViajesStore } from '../../stores/viajes'
-import { CIUDADES } from '../../services/viajesMock'
+import SelectorDestino from '../../components/cliente/SelectorDestino.vue'
 import { normalizar } from '../../utils/texto'
 
 const route = useRoute()
@@ -16,7 +16,7 @@ const busqueda = reactive({
   destino: String(route.query.destino || ''),
   fecha: String(route.query.fecha || ''),
 })
-const fechaMin = new Date().toLocaleDateString('en-CA')
+const fechaMin = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
 const errorForm = ref('')
 
 function validar() {
@@ -59,17 +59,12 @@ onMounted(() => {
             <div><h2>Personaliza tu búsqueda</h2><p>Completa la información de tu viaje.</p></div>
           </div>
           <form class="trips-form" novalidate @submit.prevent="consultar">
-            <label class="field">Ciudad de origen
-              <input v-model.trim="busqueda.origen" list="lista-ciudades" autocomplete="off" placeholder="Ej. Ambato" required />
-            </label>
+            <SelectorDestino v-model="busqueda.origen" etiqueta="Origen" es-origen/>
             <button class="swap" type="button" aria-label="Intercambiar origen y destino" @click="intercambiar">⇅</button>
-            <label class="field">Ciudad de destino
-              <input v-model.trim="busqueda.destino" list="lista-ciudades" autocomplete="off" placeholder="Ej. Quito" required />
-            </label>
+            <SelectorDestino v-model="busqueda.destino" etiqueta="Destino" :origen="busqueda.origen"/>
             <label class="field">Fecha de salida
               <input v-model="busqueda.fecha" :min="fechaMin" type="date" required />
             </label>
-            <datalist id="lista-ciudades"><option v-for="c in CIUDADES" :key="c" :value="c" /></datalist>
             <button class="search-submit" type="submit" :disabled="store.estado === 'cargando'">
               {{ store.estado === 'cargando' ? 'Buscando…' : 'Consultar viajes →' }}
             </button>
@@ -86,7 +81,7 @@ onMounted(() => {
 
 <style scoped>
 .trips-side { display: grid; gap: 18px; align-content: start; }
-.swap { justify-self: end; margin: -12px 0 -12px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #dce6e9; background: #fff; color: #146d83; font-size: 16px; }
-.swap:hover { background: #e8f4f3; }
+.swap { justify-self: end; margin: -12px 0 -12px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--brand); font-size: 16px; }
+.swap:hover { background: var(--brand-soft); }
 .search-submit:disabled { opacity: .65; cursor: progress; }
 </style>
