@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { iniciarSesion } from '../services/auth'
+import { olvidarPasajeros } from '../services/compras'
 
 const leerUsuario = () => {
   try {
@@ -35,12 +36,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', access_token)
       localStorage.setItem('usuario', JSON.stringify(usuario))
     },
-    logout() {
+    logout({ expirada = false } = {}) {
       this.token = ''
       this.usuario = null
       localStorage.removeItem('token')
       localStorage.removeItem('usuario')
-      localStorage.removeItem('pasajeros-por-reserva')
+      if (!expirada) olvidarPasajeros()
     },
   },
 })

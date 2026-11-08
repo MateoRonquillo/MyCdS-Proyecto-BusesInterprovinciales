@@ -1,14 +1,14 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useAuthStore } from '../../stores/auth'
 import { METODOS, obtenerPasajero } from '../../services/compras'
 import { etiquetaTipo } from '../../services/reservas'
 
 const props = defineProps({
-  item: { type: Object, required: true },
-  grupo: { type: Object, required: true },
+  item: { type: Object, required: true }, // reserva del historial
+  grupo: { type: Object, required: true }, // datos del viaje
   qrUrl: { type: String, required: true },
-  pago: { type: Object, default: null },
+  pago: { type: Object, default: null }, // pago más reciente de la reserva
 })
 
 const auth = useAuthStore()
@@ -23,13 +23,28 @@ const dinero = (n) => `$${Number(n).toFixed(2)}`
 const pasajero = computed(() => obtenerPasajero(props.item.reserva_id))
 const comprador = computed(() => auth.usuario)
 const metodo = computed(() => METODOS.find((m) => m.valor === props.pago?.metodo_pago)?.etiqueta || '')
-const imprimir = () => window.print()
+const raiz = ref(null)
+
+function limpiarImpresion() {
+  document.body.classList.remove('imprimiendo-boleto')
+  raiz.value?.classList.remove('boleto-activo')
+}
+function imprimir() {
+  raiz.value?.classList.add('boleto-activo')
+  document.body.classList.add('imprimiendo-boleto')
+  window.addEventListener('afterprint', limpiarImpresion, { once: true })
+  window.print()
+}
+onBeforeUnmount(() => {
+  window.removeEventListener('afterprint', limpiarImpresion)
+  limpiarImpresion()
+})
 const conDescuento = computed(() => props.item.tipo_pasajero !== 'GENERAL')
 </script>
 
 <template>
   <div class="boleto-zona">
-    <article class="boleto-imprimible ticket" aria-label="Boleto digital">
+    <article ref="raiz" class="ticket" aria-label="Boleto digital">
       <section class="principal">
         <header class="banda">
           <div>
@@ -64,7 +79,6 @@ const conDescuento = computed(() => props.item.tipo_pasajero !== 'GENERAL')
             <dd>{{ comprador.nombre }} <small v-if="comprador.cedula">· C.I. {{ comprador.cedula }}</small></dd>
           </div>
         </div>
-
         <footer class="pie">
           <span class="sello">✔ Pago aprobado<template v-if="metodo"> · {{ metodo }}</template><template v-if="pago?.referencia"> · comprobante {{ pago.referencia }}</template></span>
           <small v-if="conDescuento">Presenta el documento que respalda tu descuento al abordar.</small>
@@ -136,9 +150,10 @@ const conDescuento = computed(() => props.item.tipo_pasajero !== 'GENERAL')
 </style>
 
 <style>
+/* Al imprimir con el botón, sale únicamente el boleto elegido (una sola página) */
 @media print {
-  body * { visibility: hidden !important; }
-  .boleto-imprimible, .boleto-imprimible * { visibility: visible !important; }
-  .boleto-imprimible { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+  body.imprimiendo-boleto :not(:has(.boleto-activo)):not(.boleto-activo):not(.boleto-activo *) { display: none !important; }
+  body.imprimiendo-boleto .boleto-activo { box-shadow: none !important; margin: 0 auto; }
+  .solo-pantalla { display: none !important; }
 }
 </style>

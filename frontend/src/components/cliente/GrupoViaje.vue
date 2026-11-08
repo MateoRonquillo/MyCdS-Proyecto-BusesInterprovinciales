@@ -87,6 +87,7 @@ async function cancelar(item) {
     falla(e)
   }
 }
+let peticionActual = 0
 
 function soltarQr() {
   if (qr.value.url) URL.revokeObjectURL(qr.value.url)
@@ -94,20 +95,30 @@ function soltarQr() {
 }
 
 async function verBoleto(item) {
-  if (qr.value.reservaId === item.reserva_id) return soltarQr()
+  if (qr.value.reservaId === item.reserva_id) {
+    peticionActual++
+    return soltarQr()
+  }
   soltarQr()
+  const mia = ++peticionActual
   qr.value = { reservaId: item.reserva_id, url: '', cargando: true, error: '' }
   try {
-    qr.value.url = await obtenerQr(item.reserva_id)
+    const url = await obtenerQr(item.reserva_id)
+    if (mia !== peticionActual) return URL.revokeObjectURL(url)
+    qr.value.url = url
   } catch (e) {
+    if (mia !== peticionActual) return
     if (e.status === 401) return emit('sesion-expirada')
     qr.value.error = e.message
   } finally {
-    qr.value.cargando = false
+    if (mia === peticionActual) qr.value.cargando = false
   }
 }
 
-onBeforeUnmount(soltarQr)
+onBeforeUnmount(() => {
+  peticionActual++
+  soltarQr()
+})
 </script>
 
 <template>
@@ -148,7 +159,7 @@ onBeforeUnmount(soltarQr)
         <template v-if="qr.reservaId === item.reserva_id">
           <p v-if="qr.cargando" class="nota">Cargando boleto…</p>
           <p v-else-if="qr.error" class="rechazo">{{ qr.error }}</p>
-          <BoletoDigital v-else :item="item" :grupo="grupo" :qr-url="qr.url" :pago="pagos.get(item.reserva_id)" />
+          <BoletoDigital v-else :key="item.reserva_id" :item="item" :grupo="grupo" :qr-url="qr.url" :pago="pagos.get(item.reserva_id)" />
         </template>
       </li>
     </ul>

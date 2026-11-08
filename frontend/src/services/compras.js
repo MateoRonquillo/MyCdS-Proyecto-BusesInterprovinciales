@@ -46,25 +46,42 @@ export async function obtenerQr(reservaId) {
   return URL.createObjectURL(await r.blob())
 }
 
-export const CLAVE_PASAJEROS = 'pasajeros-por-reserva'
+export const PREFIJO_PASAJEROS = 'pasajeros-por-reserva'
+
+const claveActual = () => {
+  try {
+    return `${PREFIJO_PASAJEROS}:${JSON.parse(localStorage.getItem('usuario')).id}`
+  } catch {
+    return null
+  }
+}
 
 const leerPasajeros = () => {
+  const clave = claveActual()
   try {
-    return JSON.parse(localStorage.getItem(CLAVE_PASAJEROS)) || {}
+    return clave ? JSON.parse(localStorage.getItem(clave)) || {} : {}
   } catch {
     return {}
   }
 }
 
 export function guardarPasajeros(reservas, pasajeros) {
+  const clave = claveActual()
+  if (!clave) return
   const mapa = leerPasajeros()
   reservas.forEach((r, i) => {
     if (pasajeros[i]) mapa[r.id] = { nombres: pasajeros[i].nombres, cedula: pasajeros[i].cedula }
   })
   try {
-    localStorage.setItem(CLAVE_PASAJEROS, JSON.stringify(mapa))
+    localStorage.setItem(clave, JSON.stringify(mapa))
   } catch {
   }
 }
 
 export const obtenerPasajero = (reservaId) => leerPasajeros()[reservaId] || null
+
+export function olvidarPasajeros() {
+  Object.keys(localStorage)
+    .filter((k) => k.startsWith(PREFIJO_PASAJEROS))
+    .forEach((k) => localStorage.removeItem(k))
+}

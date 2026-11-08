@@ -11,7 +11,7 @@ const router = useRouter()
 
 const reservas = ref([])
 const pagos = ref([])
-const estado = ref('cargando')
+const estado = ref('cargando') // cargando | listo | error
 const error = ref('')
 const filtro = ref('todas')
 
@@ -23,6 +23,7 @@ const FILTROS = [
   { valor: 'cerradas', etiqueta: 'Canceladas', estados: ['CANCELADA', 'EXPIRADA'] },
 ]
 
+// Pago más reciente de cada reserva (la API los devuelve del más nuevo al más antiguo)
 const pagoPorReserva = computed(() => {
   const mapa = new Map()
   pagos.value.forEach((p) => { if (!mapa.has(p.reserva_id)) mapa.set(p.reserva_id, p) })
@@ -31,6 +32,7 @@ const pagoPorReserva = computed(() => {
 
 const cuenta = (f) => (f.estados ? reservas.value.filter((r) => f.estados.includes(r.estado)).length : reservas.value.length)
 
+// Un grupo = un viaje (frecuencia + fecha) con los asientos reservados en él
 const grupos = computed(() => {
   const f = FILTROS.find((x) => x.valor === filtro.value)
   const mapa = new Map()
@@ -46,7 +48,7 @@ const grupos = computed(() => {
 })
 
 function sesionExpirada() {
-  auth.logout()
+  auth.logout({ expirada: true })
   router.push({ name: 'login', query: { redirect: '/mis-reservas' } })
 }
 

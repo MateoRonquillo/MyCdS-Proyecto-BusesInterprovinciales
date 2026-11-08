@@ -24,12 +24,13 @@ const libres = computed(() => (disp.value.capacidad ? disp.value.capacidad - dis
 const maxPasajeros = computed(() => Math.max(1, Math.min(MAX_PASAJEROS, libres.value)))
 const seleccionados = computed(() => reserva.pasajeros.map((p) => p.asiento).filter(Boolean))
 const etiquetaTipo = (v) => TIPOS_PASAJERO.find((t) => t.valor === v)?.etiqueta || v
+// La cédula del comprador viene de su cuenta: se muestra bloqueada y no se revalida
 const cedulaCuenta = computed(() => auth.usuario?.cedula || '')
 const dinero = (n) => `$${Number(n).toFixed(2)}`
 
 function manejarError(e) {
   if (e.status === 401) {
-    auth.logout()
+    auth.logout({ expirada: true })
     router.push({ name: 'login', query: { redirect: '/reservar' } })
     return
   }
@@ -52,6 +53,7 @@ onMounted(async () => {
   if (comprador && auth.usuario) {
     if (!comprador.nombres) comprador.nombres = auth.usuario.nombre
     if (!comprador.correo) comprador.correo = auth.usuario.correo
+    // La cédula de la cuenta siempre manda sobre lo que quedó en el borrador
     if (auth.usuario.cedula) comprador.cedula = auth.usuario.cedula
   }
   await cargarDisponibilidad()
