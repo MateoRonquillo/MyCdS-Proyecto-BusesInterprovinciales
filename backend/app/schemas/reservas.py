@@ -61,11 +61,11 @@ class HistorialCompraItem(BaseModel):
 
 class EstadoReserva(str, Enum):
     PENDIENTE = "PENDIENTE"
+    PAGO_EN_REVISION = "PAGO_EN_REVISION"
     PAGADA = "PAGADA"
     CONFIRMADA = "CONFIRMADA"
     CANCELADA = "CANCELADA"
     EXPIRADA = "EXPIRADA"
-
 
 class ReservaEstadoUpdate(BaseModel):
     estado: EstadoReserva

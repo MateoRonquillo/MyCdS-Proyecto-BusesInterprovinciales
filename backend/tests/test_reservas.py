@@ -503,3 +503,97 @@ def test_rechazo_de_pago(reserva_client):
     # El QR sigue bloqueado
     qr = reserva_client.get(f"/api/v1/boletos/{reserva_id}/qr")
     assert qr.status_code == 409
+
+
+def test_asiento_expirado_queda_disponible_para_nueva_reserva(reserva_client: TestClient):
+    from app.models.core_models import Reserva
+
+    app = reserva_client.app
+    get_db_override = app.dependency_overrides[get_db]
+    db = next(get_db_override())
+
+    fecha = (date.today() + timedelta(days=7)).isoformat()
+
+    # 1. Crear reserva expirada directamente en el asiento 10
+    reserva_exp = Reserva(
+        usuario_id=1,
+        frecuencia_id=1,
+        fecha_viaje=date.today() + timedelta(days=7),
+        asiento=10,
+        tipo_pasajero="GENERAL",
+        precio=12.50,
+        estado="EXPIRADA",
+    )
+    db.add(reserva_exp)
+    db.commit()
+
+    # 2. El mapa de disponibilidad debe mostrar el asiento 10 disponible
+    disp = reserva_client.get(f"/api/v1/reservas/disponibilidad/1?fecha={fecha}")
+    assert disp.status_code == 200
+    assert 10 in disp.json()["asientos_disponibles"]
+    assert 10 not in disp.json()["asientos_ocupados"]
+
+    # 3. Debe permitir reservar nuevamente ese asiento 10 sin colisión
+    nueva = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 10, "tipo_pasajero": "GENERAL"},
+    )
+    assert nueva.status_code == 201
+    assert nueva.json()["asiento"] == 10
+
+
+def test_transicion_pago_en_revision_consistente(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=8)).isoformat()
+    creada = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 1, "tipo_pasajero": "GENERAL"},
+    )
+    res_id = creada.json()["id"]
+
+    app = reserva_client.app
+    original_user = app.dependency_overrides[get_current_user]
+    admin_user = Usuario(id=1, nombre="Admin", correo="admin@test.com", cedula="1111111111", rol="admin", activo=True)
+
+    try:
+        app.dependency_overrides[get_current_user] = lambda: admin_user
+
+        # Pasar a PAGO_EN_REVISION
+        rev = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "PAGO_EN_REVISION"})
+        assert rev.status_code == 200
+        assert rev.json()["estado"] == "PAGO_EN_REVISION"
+
+        # Pasar de PAGO_EN_REVISION a CONFIRMADA
+        conf = reserva_client.patch(f"/api/v1/reservas/{res_id}/estado", json={"estado": "CONFIRMADA"})
+        assert conf.status_code == 200
+        assert conf.json()["estado"] == "CONFIRMADA"
+    finally:
+        app.dependency_overrides[get_current_user] = original_user
+
+def test_cancelar_reserva_en_revision_sincroniza_pago_a_rechazado(reserva_client: TestClient):
+    fecha = (date.today() + timedelta(days=9)).isoformat()
+
+    # 1. Crear reserva
+    creada = reserva_client.post(
+        "/api/v1/reservas",
+        json={"frecuencia_id": 1, "fecha_viaje": fecha, "asiento": 2, "tipo_pasajero": "GENERAL"},
+    )
+    assert creada.status_code == 201
+    res_id = creada.json()["id"]
+
+    # 2. Registrar pago -> la reserva pasa a PAGO_EN_REVISION y el pago a PENDIENTE
+    pago_resp = reserva_client.post(
+        "/api/v1/pagos",
+        json={"reserva_id": res_id, "metodo_pago": "EFECTIVO", "monto": 12.50},
+    )
+    assert pago_resp.status_code == 201
+    pago_id = pago_resp.json()["id"]
+
+    # 3. Cancelar la reserva
+    del_resp = reserva_client.delete(f"/api/v1/reservas/{res_id}")
+    assert del_resp.status_code == 204
+
+    # 4. Verificar que el pago asociado quedo sincronizado a RECHAZADO
+    pago_check = reserva_client.get(f"/api/v1/pagos/{pago_id}")
+    assert pago_check.status_code == 200
+    assert pago_check.json()["estado"] == "RECHAZADO"
+    assert "Cancelado por anulación" in pago_check.json()["motivo_rechazo"]

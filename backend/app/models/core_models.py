@@ -75,7 +75,7 @@ class Reserva(Base):
     asiento_activo = Column(
         Integer,
         Computed(
-            "CASE WHEN estado = 'CANCELADA' THEN NULL ELSE asiento END",
+            "CASE WHEN estado IN ('CANCELADA', 'EXPIRADA') THEN NULL ELSE asiento END",
             persisted=True,
         ),
         nullable=True,
