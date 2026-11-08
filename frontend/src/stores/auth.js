@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { iniciarSesion } from '../services/auth'
+import { olvidarPasajeros } from '../services/compras'
 
 const leerUsuario = () => {
   try {
@@ -9,7 +10,6 @@ const leerUsuario = () => {
   }
 }
 
-// El backend usa 'admin' y 'oficinista'; el router usa estos nombres
 const ROL_FRONT = { admin: 'ADMINISTRADOR', oficinista: 'OFICINISTA' }
 
 export const useAuthStore = defineStore('auth', {
@@ -36,11 +36,12 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', access_token)
       localStorage.setItem('usuario', JSON.stringify(usuario))
     },
-    logout() {
+    logout({ expirada = false } = {}) {
       this.token = ''
       this.usuario = null
       localStorage.removeItem('token')
       localStorage.removeItem('usuario')
+      if (!expirada) olvidarPasajeros()
     },
   },
 })

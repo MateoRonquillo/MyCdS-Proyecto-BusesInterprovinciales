@@ -11,14 +11,16 @@ export const TIPOS_PASAJERO = [
   { valor: 'ESTUDIANTE', etiqueta: 'Estudiante', descuento: 50 },
 ]
 
-class ApiError extends Error {
+export const etiquetaTipo = (valor) => TIPOS_PASAJERO.find((t) => t.valor === valor)?.etiqueta || valor
+
+export class ApiError extends Error {
   constructor(mensaje, status) {
     super(mensaje)
     this.status = status
   }
 }
 
-async function pedir(ruta, opciones = {}) {
+export async function pedir(ruta, opciones = {}) {
   const token = localStorage.getItem('token')
   let r
   try {
@@ -32,13 +34,15 @@ async function pedir(ruta, opciones = {}) {
   if (r.status === 204) return null
   const datos = await r.json().catch(() => ({}))
   if (!r.ok) {
-    const msg = typeof datos.detail === 'string' ? datos.detail : 'Revisa los datos ingresados.'
+    const e = datos.error
+    const detalle = e?.details?.[0]?.message?.replace(/^Value error, /, '')
+    const msg = e?.code === 'validation_error' ? detalle || 'Revisa los datos ingresados.'
+      : e?.message || (typeof datos.detail === 'string' ? datos.detail : 'No se pudo completar la solicitud.')
     throw new ApiError(r.status === 401 ? 'Tu sesión expiró. Inicia sesión nuevamente.' : msg, r.status)
   }
   return datos
 }
 
-/* ---------- Simulación (mientras no exista GET /viajes) ---------- */
 const reservadasMock = new Set()
 const pausa = (ms = 350) => new Promise((res) => setTimeout(res, ms))
 const redondear = (n) => Math.round(n * 100) / 100
@@ -72,8 +76,6 @@ function tarifaMock(viaje, tipos) {
   }
 }
 
-/* ---------- API pública del servicio ---------- */
-// El id del viaje debe ser el id de la frecuencia en el backend.
 export async function obtenerDisponibilidad(viaje) {
   if (USAR_MOCKS) {
     await pausa()
@@ -91,7 +93,6 @@ export async function calcularTarifa(viaje, tipos) {
   return pedir('/tarifas/calcular', { method: 'POST', body: JSON.stringify({ frecuencia_id: viaje.id, tipos_pasajero: tipos }) })
 }
 
-// Una reserva por asiento. Si alguna falla, se cancelan las ya creadas.
 export async function crearReservas(viaje, pasajeros) {
   const creadas = []
   try {
