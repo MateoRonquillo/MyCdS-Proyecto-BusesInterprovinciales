@@ -10,7 +10,8 @@ const leerUsuario = () => {
   }
 }
 
-const ROL_FRONT = { admin: 'ADMINISTRADOR', oficinista: 'OFICINISTA' }
+// El backend usa 'admin' y 'oficinista'; el router usa estos nombres
+const ROL_FRONT = { admin: 'ADMINISTRADOR', oficinista: 'OFICINISTA', cooperativa: 'COOPERATIVA', chofer: 'PERSONAL', ayudante: 'PERSONAL' }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -24,6 +25,8 @@ export const useAuthStore = defineStore('auth', {
     rutaInicio() {
       if (this.rolFront === 'ADMINISTRADOR') return '/admin'
       if (this.rolFront === 'OFICINISTA') return '/oficinista'
+      if (this.rolFront === 'COOPERATIVA') return '/cooperativa'
+      if (this.rolFront === 'PERSONAL') return '/abordaje'
       return '/'
     },
   },

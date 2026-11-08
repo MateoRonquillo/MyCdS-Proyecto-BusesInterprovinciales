@@ -35,6 +35,7 @@ async function enviar() {
   <section class="login-pagina">
     <form class="login-tarjeta" @submit.prevent="enviar" novalidate>
       <span class="login-icono" aria-hidden="true">↗</span>
+      <p v-if="route.query.sesion === 'expirada'" class="information-note" role="status">Tu sesión expiró. Ingresa nuevamente para continuar.</p>
       <h1>Iniciar sesión</h1>
       <p class="login-sub">Ingresa para comprar y gestionar tus pasajes.</p>
 
@@ -68,7 +69,8 @@ async function enviar() {
       <button class="login-boton" type="submit" :disabled="cargando">
         {{ cargando ? 'Ingresando…' : 'Ingresar' }}
       </button>
-    </form>
+    <p>¿Aún no tienes cuenta? <RouterLink to="/registro">Regístrate</RouterLink></p>
+      </form>
   </section>
 </template>
 
@@ -94,8 +96,8 @@ async function enviar() {
   height: 46px;
   margin-bottom: 14px;
   border-radius: 13px;
-  background: var(--color-azul);
-  color: #fff;
+  background: var(--brand);
+  color: var(--surface);
   font-size: 28px;
   font-weight: 800;
 }
@@ -119,7 +121,7 @@ input {
   padding: 12px 14px;
   border: 1px solid var(--color-borde);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   color: var(--color-texto);
 }
 input:focus {
@@ -149,21 +151,21 @@ input:focus {
   padding: 13px;
   border: 0;
   border-radius: 10px;
-  background: var(--color-navy);
-  color: #fff;
+  background: var(--brand);
+  color: var(--surface);
   font-weight: 700;
 }
 .login-boton:hover:not(:disabled) {
-  background: var(--color-navy-hover);
+  background: var(--brand-hover);
 }
 .login-boton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 .login-error {
-  background: #fdecec;
-  color: #a12626;
-  border: 1px solid #f3c2c2;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--border);
   padding: 10px 12px;
   border-radius: 10px;
   font-size: 14px;

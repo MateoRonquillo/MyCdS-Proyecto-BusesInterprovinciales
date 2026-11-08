@@ -1,8 +1,9 @@
 <script setup>
+import SelectorDestino from '../../components/cliente/SelectorDestino.vue'
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 const router = useRouter()
-const hoy = new Date().toLocaleDateString('en-CA')
+const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
 const busqueda = reactive({ origen: '', destino: '', fecha: '' })
 const error = ref('')
 function buscar() {
@@ -33,8 +34,8 @@ function buscar() {
       <div class="search-card">
         <div class="search-header"><div><span class="section-kicker">PLANIFICA TU VIAJE</span><h2 id="search-title">¿A dónde vamos hoy?</h2></div><span class="search-caption">Explora las rutas disponibles</span></div>
         <form class="search-form" @submit.prevent="buscar">
-          <label class="field"><span>Origen</span><div class="input-with-icon"><span aria-hidden="true">◎</span><input v-model.trim="busqueda.origen" name="origen" autocomplete="off" placeholder="Ciudad de salida" required /></div></label>
-          <label class="field"><span>Destino</span><div class="input-with-icon"><span aria-hidden="true">⌖</span><input v-model.trim="busqueda.destino" name="destino" autocomplete="off" placeholder="¿A dónde viajas?" required /></div></label>
+          <SelectorDestino v-model="busqueda.origen" etiqueta="Origen" es-origen/>
+          <SelectorDestino v-model="busqueda.destino" etiqueta="Destino" :origen="busqueda.origen"/>
           <label class="field"><span>Fecha de viaje</span><div class="input-with-icon"><span aria-hidden="true">▦</span><input v-model="busqueda.fecha" name="fecha" type="date" :min="hoy" required /></div></label>
           <button class="search-submit" type="submit">Buscar viajes <span aria-hidden="true">→</span></button>
         </form>

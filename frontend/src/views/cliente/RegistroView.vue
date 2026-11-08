@@ -1,0 +1,11 @@
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { request } from '../../services/http'
+import AppIcon from '../../components/ui/AppIcon.vue'
+const form=ref({nombre:'',correo:'',cedula:'',password:''}),error=ref(''),ocupado=ref(false)
+const router=useRouter()
+async function registrar(){if(ocupado.value)return;ocupado.value=true;error.value='';try{await request('/auth/registro',{method:'POST',body:JSON.stringify(form.value)});router.push('/login')}catch(e){error.value=e.message}finally{ocupado.value=false}}
+</script>
+<template><div class="registration-page page-container"><section class="card registration-card"><p class="eyebrow-label">Viajar comienza aquí</p><h1>Crea tu cuenta</h1><p class="muted">Tus próximos viajes, pagos y boletos en un solo lugar.</p><form @submit.prevent="registrar"><div v-if="error" class="alert error" role="alert">{{ error }}</div><fieldset :disabled="ocupado" class="registration-fields"><label class="form-field">Nombre y apellido<input v-model.trim="form.nombre" required minlength="3" maxlength="100" autocomplete="name"></label><label class="form-field">Correo electrónico<input v-model.trim="form.correo" type="email" required maxlength="100" autocomplete="email"></label><label class="form-field">Cédula ecuatoriana<input v-model="form.cedula" required pattern="[0-9]{10}" maxlength="10" inputmode="numeric"><small>Utilizaremos tu documento para identificar las reservas.</small></label><label class="form-field">Contraseña<input v-model="form.password" type="password" required minlength="12" maxlength="128" autocomplete="new-password"><small>Al menos 12 caracteres.</small></label></fieldset><button class="btn-primary" :disabled="ocupado" style="width:100%;margin-top:24px">{{ ocupado?'Creando cuenta…':'Crear cuenta' }}<AppIcon name="arrow" :size="17"/></button><p class="small muted" style="text-align:center;margin:20px 0 0">¿Ya tienes una cuenta? <RouterLink to="/login">Ingresa aquí</RouterLink></p></form></section></div></template>
+<style scoped>.registration-page{padding:50px 0 70px;display:grid;place-items:center}.registration-card{padding:32px;width:min(480px,100%)}h1{font-size:30px;font-weight:550;margin:0 0 10px}.registration-card>p.muted{font-size:12px;margin-bottom:26px}.registration-fields{display:grid;gap:18px;border:0;padding:0;margin:0;min-width:0}</style>
