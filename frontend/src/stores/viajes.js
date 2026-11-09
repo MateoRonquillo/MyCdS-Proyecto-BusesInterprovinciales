@@ -15,6 +15,10 @@ export const ORDENES = [
 
 const filtrosIniciales = () => ({
   cooperativa: '',
+  tipoAsiento: '',
+  chasis: '',
+  carroceria: '',
+  tipoViaje: '',
   franjas: [],
   precioMax: null,
   soloDisponibles: false,
@@ -46,13 +50,17 @@ export const useViajesStore = defineStore('viajes', {
     precioMaximo: (state) => (state.resultados.length ? Math.ceil(Math.max(...state.resultados.map((v) => v.precio))) : 0),
     filtrosActivos(state) {
       const f = state.filtros
-      return [f.cooperativa !== '', f.franjas.length > 0, f.precioMax !== null && f.precioMax < this.precioMaximo, f.soloDisponibles].filter(Boolean).length
+      return [f.cooperativa !== '', f.franjas.length > 0, f.precioMax !== null && f.precioMax < this.precioMaximo, f.soloDisponibles, f.tipoAsiento, f.chasis, f.carroceria, f.tipoViaje].filter(Boolean).length
     },
     viajesFiltrados(state) {
       const f = state.filtros
       const rangos = FRANJAS.filter((x) => f.franjas.includes(x.valor))
       const lista = state.resultados.filter((v) => {
         if (f.cooperativa !== '' && v.cooperativa.id !== Number(f.cooperativa)) return false
+        if (f.tipoAsiento && !v.tipos_asiento?.includes(f.tipoAsiento)) return false
+        if (f.chasis && !v.chasis?.toLowerCase().includes(f.chasis.toLowerCase())) return false
+        if (f.carroceria && !v.carroceria?.toLowerCase().includes(f.carroceria.toLowerCase())) return false
+        if (f.tipoViaje && v.tipo_viaje !== f.tipoViaje) return false
         if (f.soloDisponibles && v.asientos_disponibles <= 0) return false
         if (f.precioMax !== null && v.precio > f.precioMax) return false
         if (rangos.length) {

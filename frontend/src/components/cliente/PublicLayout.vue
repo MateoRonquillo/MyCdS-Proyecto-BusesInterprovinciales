@@ -1,4 +1,5 @@
 <script setup>
+import ThemePicker from '../ui/ThemePicker.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../../stores/app'
@@ -17,23 +18,25 @@ function salir() {
 </script>
 
 <template>
-  <div class="layout-publico">
+  <div class="layout-publico" :style="{ '--color-primary': app.color_principal }">
     <header class="site-header">
       <div class="site-topline">Rutas interprovinciales · Ecuador <span>Tu próximo destino comienza aquí</span></div>
       <div class="header-inner">
         <RouterLink to="/" class="brand" @click="menuAbierto = false" :aria-label="`${app.nombre} - Inicio`">
-          <span class="brand-symbol" aria-hidden="true">↗</span>
-          <span class="brand-text">Rutas<span>Ecuador</span><small>Viaja más fácil</small></span>
+          <img v-if="app.logo_url" :src="app.logo_url" :alt="app.nombre" width="44" height="44"><span v-else class="brand-symbol" aria-hidden="true" :style="{ background: 'var(--brand)', color: 'var(--surface)' }">↗</span>
+          <span class="brand-text" :style="{ color: 'var(--brand)' }">{{ app.nombre }}<small>Viaja más fácil</small></span>
         </RouterLink>
         <button class="menu-toggle" type="button" :aria-expanded="menuAbierto" aria-controls="nav-publica" @click="menuAbierto = !menuAbierto">
           <span aria-hidden="true">☰</span> Menú
         </button>
+        <ThemePicker/>
         <nav id="nav-publica" class="site-nav" :class="{ abierta: menuAbierto }" aria-label="Navegación principal">
           <RouterLink to="/" @click="menuAbierto = false">Inicio</RouterLink>
           <RouterLink to="/viajes" @click="menuAbierto = false">Buscar viajes</RouterLink>
 
           <template v-if="auth.estaAutenticado">
             <RouterLink to="/mis-reservas" @click="menuAbierto = false">Mis reservas</RouterLink>
+            <RouterLink to="/compras" @click="menuAbierto = false">Mis compras</RouterLink>
             <span class="nav-usuario">Hola, {{ auth.usuario.nombre.split(' ')[0] }}</span>
             <button type="button" class="nav-salir" @click="salir">Salir</button>
           </template>
@@ -46,9 +49,10 @@ function salir() {
     <main id="contenido" class="public-main"><RouterView /></main>
     <footer class="site-footer">
       <div class="footer-inner">
-        <div><strong>↗ RutasEcuador</strong><p>Una mejor forma de planificar tus viajes por Ecuador.</p></div>
+        <div><strong>{{ app.nombre }}</strong><p>Una mejor forma de planificar tus viajes por Ecuador.</p></div>
         <div class="footer-links"><RouterLink to="/">Inicio</RouterLink><RouterLink to="/viajes">Buscar viajes</RouterLink></div>
       </div>
+      <p v-if="app.soporte || app.redes_sociales" class="footer-inner">Soporte: {{ app.soporte }} · {{ app.redes_sociales }}</p>
       <div class="footer-bottom">Sistema de Gestión y Venta de Pasajes Interprovinciales del Ecuador · Proyecto académico</div>
     </footer>
   </div>
@@ -63,7 +67,7 @@ function salir() {
 .nav-salir {
   font-size: 15px;
   border: 1px solid var(--color-borde);
-  background: #fff;
+  background: var(--surface);
   color: var(--color-navy);
   padding: 8px 16px;
   border-radius: 10px;

@@ -77,17 +77,17 @@ const sinCoincidencias = computed(() => store.resultados.length > 0 && store.via
 .lista { min-width: 0; }
 .lista-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
 .lista-cab h2 { font-size: 24px; letter-spacing: -.04em; margin: 6px 0 2px; }
-.fecha { margin: 0; font-size: 13px; color: #697985; }
+.fecha { margin: 0; font-size: 13px; color: var(--muted); }
 .demo { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #8a5a10; background: #fdf1dc; border: 1px solid #f0d9ab; padding: 5px 10px; border-radius: 30px; white-space: nowrap; }
 .viajes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.aviso { display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 340px; padding: 27px; background: radial-gradient(circle at 50% 28%, #eef9f7, #fff 60%); border: 1px solid var(--color-borde); border-radius: 12px; }
-.aviso-icono { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 50%; background: #dfefef; color: #197790; font-size: 40px; margin-bottom: 14px; }
+.aviso { display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; min-height: 340px; padding: 27px; background: radial-gradient(circle at 50% 28%, var(--surface-soft), var(--surface) 60%); border: 1px solid var(--color-borde); border-radius: 12px; }
+.aviso-icono { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: 40px; margin-bottom: 14px; }
 .aviso h2 { font-size: 21px; letter-spacing: -.04em; margin: 8px 0 10px; }
-.aviso p { color: #728591; font-size: 13px; max-width: 430px; margin: 0 0 14px; }
-.aviso.error { background: #fff8f8; border-color: #f0d4d4; }
-.aviso.error .aviso-icono { background: #f7dede; color: #a22e32; }
-.accion { background: #146d83; color: #fff; border: 0; border-radius: 7px; padding: 10px 22px; font-size: 12px; font-weight: 800; }
-.accion:hover { background: #10556d; }
+.aviso p { color: var(--muted); font-size: 13px; max-width: 430px; margin: 0 0 14px; }
+.aviso.error { background: var(--danger-bg); border-color: var(--border); }
+.aviso.error .aviso-icono { background: var(--danger-bg); color: var(--danger); }
+.accion { background: var(--brand); color: var(--surface); border: 0; border-radius: 7px; padding: 10px 22px; font-size: 12px; font-weight: 800; }
+.accion:hover { background: var(--brand-hover); }
 .esqueletos { display: grid; gap: 12px; }
 .esqueleto { height: 110px; border-radius: 12px; background: linear-gradient(90deg, #eef3f3 25%, #f8fbfb 50%, #eef3f3 75%); background-size: 200% 100%; animation: brillo 1.2s infinite linear; }
 @keyframes brillo { to { background-position: -200% 0; } }

@@ -1,242 +1,45 @@
 <script setup>
-import { ref, computed } from 'vue'
-import AdminSidebar from '../../components/admin/AdminSidebar.vue'
-
-// Estado del flujo de venta
-const pasoActual = ref(1) // 1: Viaje, 2: Asientos, 3: Pasajero y Pago
-
-// Mocks temporales para viajes y asientos
-const viajesDisponibles = ref([
-  { id: 'V-001', ruta: 'Quito → Ambato', hora: '10:30', bus: 'DISCO-14', tarifa: 4.50, disponibles: 12 },
-  { id: 'V-002', ruta: 'Quito → Guayaquil', hora: '11:00', bus: 'DISCO-08', tarifa: 12.00, disponibles: 5 },
-  { id: 'V-003', ruta: 'Ambato → Puyo', hora: '12:15', bus: 'DISCO-25', tarifa: 3.75, disponibles: 20 }
-])
-
-const asientosDisponibles = ref(
-  Array.from({ length: 40 }, (_, i) => ({
-    numero: i + 1,
-    estado: Math.random() > 0.7 ? 'OCUPADO' : 'DISPONIBLE'
-  }))
-)
-
-// Formularios y selecciones
-const viajeSeleccionado = ref(null)
-const asientosSeleccionados = ref([])
-const datosPasajero = ref({ cedula: '', nombre: '', correo: '' })
-const mensajeExito = ref('')
-
-const totalPagar = computed(() => {
-  if (!viajeSeleccionado.value) return 0
-  return viajeSeleccionado.value.tarifa * asientosSeleccionados.value.length
-})
-
-function seleccionarViaje(viaje) {
-  viajeSeleccionado.value = viaje
-  pasoActual.value = 2
-  asientosSeleccionados.value = []
-}
-
-function toggleAsiento(asiento) {
-  if (asiento.estado === 'OCUPADO') return
-  const index = asientosSeleccionados.value.indexOf(asiento.numero)
-  if (index === -1) {
-    if (asientosSeleccionados.value.length < 5) asientosSeleccionados.value.push(asiento.numero)
-  } else {
-    asientosSeleccionados.value.splice(index, 1)
-  }
-}
-
-function irAPago() {
-  if (asientosSeleccionados.value.length === 0) return
-  pasoActual.value = 3
-}
-
-function emitirBoleto() {
-  if (!datosPasajero.value.cedula || !datosPasajero.value.nombre) return
-  
-  mensajeExito.value = `¡Boleto emitido con éxito! (Asientos: ${asientosSeleccionados.value.join(', ')})`
-  
-  setTimeout(() => {
-    // Resetear el flujo para el siguiente cliente en la fila
-    pasoActual.value = 1
-    viajeSeleccionado.value = null
-    asientosSeleccionados.value = []
-    datosPasajero.value = { cedula: '', nombre: '', correo: '' }
-    mensajeExito.value = ''
-  }, 4000)
-}
+import { computed, ref, watch } from 'vue'
+import PanelLayout from '../../components/panel/PanelLayout.vue'
+import AppIcon from '../../components/ui/AppIcon.vue'
+import SelectorDestino from '../../components/cliente/SelectorDestino.vue'
+import MapaAsientos from '../../components/cliente/MapaAsientos.vue'
+import { request, descargar } from '../../services/http'
+import { TIPOS_PASAJERO } from '../../services/reservas'
+import { validarCedula } from '../../utils/validaciones'
+const hoy=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Guayaquil'})
+const consulta=ref({origen:'',destino:'',fecha:hoy()}), viajes=ref([]), viaje=ref(null), mapa=ref(null), busquedaHecha=ref(false)
+const pasajero=ref({nombre:'',cedula:'',tipo:'GENERAL'}), asiento=ref(null), verificado=ref(false), tipoAsiento=ref(''), error=ref(''), ocupado=ref(false), resultado=ref(null), tarifa=ref(null), paso=ref(1)
+let clave=crypto.randomUUID(), payloadPendiente=null, secuenciaTarifa=0
+const seleccionado=computed(()=>!!viaje.value&&!!asiento.value)
+watch(()=>pasajero.value.tipo,()=>{verificado.value=false;if(viaje.value)calcular()})
+watch(tipoAsiento,()=>asiento.value=null)
+async function calcular(){const n=++secuenciaTarifa;tarifa.value=null;try{const d=await request('/tarifas/calcular',{method:'POST',body:JSON.stringify({frecuencia_id:viaje.value.id,origen_orden:viaje.value.origen_orden,destino_orden:viaje.value.destino_orden,tipos_pasajero:[pasajero.value.tipo]})});if(n===secuenciaTarifa)tarifa.value=d}catch(e){if(n===secuenciaTarifa)error.value=e.message}}
+async function ejecutar(fn){if(ocupado.value)return;ocupado.value=true;error.value='';try{await fn()}catch(e){error.value=e.message}finally{ocupado.value=false}}
+async function buscar(){await ejecutar(async()=>{if(!consulta.value.origen||!consulta.value.destino||!consulta.value.fecha)throw new Error('Selecciona origen, destino y fecha.');viajes.value=(await request(`/viajes?${new URLSearchParams(consulta.value)}`)).items;viaje.value=null;mapa.value=null;asiento.value=null;busquedaHecha.value=true;paso.value=1})}
+async function elegir(v){await ejecutar(async()=>{mapa.value=await request(`/reservas/disponibilidad/${v.id}?fecha=${v.fecha}&origen_orden=${v.origen_orden}&destino_orden=${v.destino_orden}`);viaje.value=v;asiento.value=null;tipoAsiento.value='';paso.value=2;await calcular()})}
+function continuar(){error.value='';if(!asiento.value){error.value='Selecciona un asiento disponible.';return}paso.value=3}
+async function vender(){await ejecutar(async()=>{
+ if(!payloadPendiente){
+  if(!validarCedula(pasajero.value.cedula))throw new Error('Revisa la cédula ecuatoriana del pasajero.')
+  if(pasajero.value.nombre.trim().length<3)throw new Error('Ingresa el nombre completo del pasajero.')
+  if(pasajero.value.tipo!=='GENERAL'&&!verificado.value)throw new Error('Verifica la cédula y el respaldo del descuento.')
+  if(!seleccionado.value||!tarifa.value)throw new Error('Selecciona un viaje y asiento y espera el cálculo de tarifa.')
+  payloadPendiente={frecuencia_id:viaje.value.id,fecha_viaje:viaje.value.fecha,asiento:asiento.value,tipo_pasajero:pasajero.value.tipo,pasajero_nombre:pasajero.value.nombre.trim(),pasajero_cedula:pasajero.value.cedula,origen_orden:viaje.value.origen_orden,destino_orden:viaje.value.destino_orden,clave_operacion:clave,descuento_verificado:verificado.value}
+ }
+ try{resultado.value=await request('/ventas/presencial',{method:'POST',body:JSON.stringify(payloadPendiente)});payloadPendiente=null;paso.value=4}
+ catch(e){if(e.status && e.status<500){payloadPendiente=null;if(e.status===409){mapa.value=await request(`/reservas/disponibilidad/${viaje.value.id}?fecha=${viaje.value.fecha}&origen_orden=${viaje.value.origen_orden}&destino_orden=${viaje.value.destino_orden}`);asiento.value=null;paso.value=2;clave=crypto.randomUUID()}}throw e}
+})}
+function nuevaVenta(){resultado.value=null;viaje.value=null;mapa.value=null;asiento.value=null;pasajero.value={nombre:'',cedula:'',tipo:'GENERAL'};verificado.value=false;error.value='';paso.value=1;clave=crypto.randomUUID();payloadPendiente=null;busquedaHecha.value=false;viajes.value=[]}
 </script>
-
-<template>
-  <div class="admin-layout">
-    <AdminSidebar rol="OFICINISTA" />
-
-    <main class="admin-main">
-      <header class="page-header">
-        <div>
-          <span class="module-pill">Módulo M13</span>
-          <h1>Venta en Ventanilla</h1>
-          <p class="subtitle">Emisión rápida de pasajes presenciales, selección de asientos y cobro.</p>
-        </div>
-      </header>
-
-      <div v-if="mensajeExito" class="alert-success">
-        <strong>✓ Operación exitosa:</strong> {{ mensajeExito }}
-      </div>
-
-      <div class="wizard-container" v-else>
-        <!-- PASO 1: Seleccionar Viaje -->
-        <section v-if="pasoActual === 1" class="step-card">
-          <h2>1. Próximas Salidas</h2>
-          <div class="viajes-grid">
-            <div 
-              v-for="viaje in viajesDisponibles" 
-              :key="viaje.id" 
-              class="viaje-item"
-              @click="seleccionarViaje(viaje)"
-            >
-              <div class="viaje-ruta">{{ viaje.ruta }}</div>
-              <div class="viaje-detalles">
-                <span>🕒 {{ viaje.hora }}</span>
-                <span>🚌 {{ viaje.bus }}</span>
-              </div>
-              <div class="viaje-footer">
-                <span class="precio">${{ viaje.tarifa.toFixed(2) }}</span>
-                <span class="disponibles">{{ viaje.disponibles }} asientos disp.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- PASO 2: Seleccionar Asientos -->
-        <section v-if="pasoActual === 2" class="step-card">
-          <div class="step-header">
-            <h2>2. Seleccionar Asientos ({{ viajeSeleccionado.ruta }})</h2>
-            <button class="btn-outline" @click="pasoActual = 1">Volver</button>
-          </div>
-          
-          <div class="asientos-layout">
-            <div class="bus-grid">
-              <div 
-                v-for="asiento in asientosDisponibles" 
-                :key="asiento.numero"
-                class="asiento"
-                :class="{
-                  'ocupado': asiento.estado === 'OCUPADO',
-                  'seleccionado': asientosSeleccionados.includes(asiento.numero)
-                }"
-                @click="toggleAsiento(asiento)"
-              >
-                {{ asiento.numero }}
-              </div>
-            </div>
-            
-            <div class="resumen-panel">
-              <h3>Resumen</h3>
-              <p><strong>Seleccionados:</strong> {{ asientosSeleccionados.length || 0 }}</p>
-              <p><strong>Asientos:</strong> {{ asientosSeleccionados.join(', ') || '-' }}</p>
-              <h2 class="total-text">Total: ${{ totalPagar.toFixed(2) }}</h2>
-              
-              <button 
-                class="btn-primary btn-block" 
-                :disabled="asientosSeleccionados.length === 0"
-                @click="irAPago"
-              >
-                Continuar con el cobro →
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <!-- PASO 3: Pasajero y Emisión -->
-        <section v-if="pasoActual === 3" class="step-card">
-          <div class="step-header">
-            <h2>3. Datos del Pasajero y Emisión</h2>
-            <button class="btn-outline" @click="pasoActual = 2">Volver a asientos</button>
-          </div>
-
-          <form @submit.prevent="emitirBoleto" class="emision-grid">
-            <div class="form-section">
-              <div class="form-row">
-                <label>Cédula de Identidad *</label>
-                <input v-model="datosPasajero.cedula" type="text" maxlength="10" required placeholder="Ej: 1712345678" />
-              </div>
-              <div class="form-row">
-                <label>Nombre Completo *</label>
-                <input v-model="datosPasajero.nombre" type="text" required placeholder="Ej: Juan Pérez" />
-              </div>
-              <div class="form-row">
-                <label>Correo (Opcional para factura electrónica)</label>
-                <input v-model="datosPasajero.correo" type="email" placeholder="juan@email.com" />
-              </div>
-            </div>
-
-            <div class="resumen-final-panel">
-              <h3>Detalle de Venta</h3>
-              <div class="ticket-preview">
-                <p><strong>Ruta:</strong> {{ viajeSeleccionado.ruta }}</p>
-                <p><strong>Salida:</strong> {{ viajeSeleccionado.hora }}</p>
-                <p><strong>Asientos ({{ asientosSeleccionados.length }}):</strong> {{ asientosSeleccionados.join(', ') }}</p>
-                <hr>
-                <p class="cobro-total">A COBRAR: ${{ totalPagar.toFixed(2) }}</p>
-              </div>
-              <button type="submit" class="btn-success btn-block">
-                Cobrar e Imprimir Boleto
-              </button>
-            </div>
-          </form>
-        </section>
-      </div>
-    </main>
-  </div>
-</template>
-
-<style scoped>
-.admin-layout { display: flex; min-height: 100vh; background-color: #f4f6f9; font-family: system-ui, -apple-system, sans-serif; }
-.admin-main { flex: 1; padding: 2rem; }
-.page-header { margin-bottom: 1.5rem; }
-.module-pill { font-size: 0.75rem; font-weight: 700; color: #b45309; background: #fef3c7; padding: 0.2rem 0.55rem; border-radius: 4px; }
-.subtitle { color: #64748b; margin-top: 0.25rem; }
-.wizard-container { max-width: 900px; }
-.step-card { background: #ffffff; padding: 2rem; border-radius: 8px; border: 1px solid #e2e8f0; }
-.step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.step-header h2 { margin: 0; color: #1e293b; }
-
-/* Grid de viajes */
-.viajes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
-.viaje-item { border: 1px solid #cbd5e1; border-radius: 8px; padding: 1rem; cursor: pointer; transition: 0.2s; }
-.viaje-item:hover { border-color: #0f766e; background-color: #f0fdfa; transform: translateY(-2px); }
-.viaje-ruta { font-weight: 700; font-size: 1.1rem; color: #0f172a; margin-bottom: 0.5rem; }
-.viaje-detalles { display: flex; justify-content: space-between; color: #475569; font-size: 0.9rem; margin-bottom: 1rem; }
-.viaje-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; padding-top: 0.75rem; }
-.precio { font-weight: 800; color: #0f766e; font-size: 1.1rem; }
-.disponibles { font-size: 0.8rem; background: #e0f2fe; color: #0369a1; padding: 0.2rem 0.4rem; border-radius: 4px; }
-
-/* Grid de Asientos */
-.asientos-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
-.bus-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 2px dashed #cbd5e1; }
-.asiento { background: #ffffff; border: 2px solid #94a3b8; border-radius: 6px; padding: 0.75rem; text-align: center; font-weight: 700; cursor: pointer; user-select: none; transition: 0.2s; }
-.asiento:hover:not(.ocupado) { border-color: #0f766e; color: #0f766e; }
-.asiento.ocupado { background: #e2e8f0; border-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; }
-.asiento.seleccionado { background: #0f766e; border-color: #0f766e; color: #ffffff; }
-
-/* Resumen y Formulario */
-.resumen-panel, .resumen-final-panel { background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
-.total-text { color: #0f766e; margin: 1.5rem 0; font-size: 1.5rem; border-bottom: 2px solid #0f766e; padding-bottom: 0.5rem; }
-.emision-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem; }
-.form-section { display: flex; flex-direction: column; gap: 1.25rem; }
-.form-row { display: flex; flex-direction: column; gap: 0.35rem; }
-.form-row input { padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem; }
-.ticket-preview { background: #fff; padding: 1rem; border: 1px dashed #94a3b8; margin-bottom: 1.5rem; border-radius: 4px; }
-.ticket-preview p { margin: 0.25rem 0; font-size: 0.95rem; }
-.cobro-total { font-weight: 800; font-size: 1.25rem; color: #b45309; margin-top: 0.5rem !important; }
-
-/* Botones y alertas */
-.btn-primary { background: #0f766e; color: #ffffff; border: none; padding: 0.75rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
-.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-.btn-success { background: #15803d; color: #ffffff; border: none; padding: 1rem; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 1.1rem; transition: 0.2s; }
-.btn-success:hover { background: #166534; }
-.btn-outline { background: transparent; border: 1px solid #cbd5e1; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; color: #475569; }
-.btn-block { width: 100%; }
-.alert-success { background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; font-size: 1.1rem; border: 1px solid #bbf7d0; max-width: 900px; }
-</style>
+<template><PanelLayout titulo="Venta presencial" descripcion="Un proceso claro para elegir el viaje, asignar un asiento y emitir el boleto." etiqueta="Atención al pasajero">
+<ol class="sale-steps" aria-label="Etapas de la venta"><li v-for="(nombre,i) in ['Viaje','Asiento','Pasajero y cobro','Boleto']" :key="nombre" :class="{actual:paso===i+1,completo:paso>i+1}" :aria-current="paso===i+1?'step':undefined"><span>{{ String(i+1).padStart(2,'0') }}</span>{{ nombre }}</li></ol>
+<div v-if="error" class="alert error" role="alert">{{ error }}</div>
+<div v-if="resultado" class="card sale-success"><span class="success-emblem"><AppIcon name="check" :size="32"/></span><p class="eyebrow-label">Venta completada</p><h2>El próximo viaje ya tiene su boleto.</h2><p class="muted">Reserva #{{ resultado.reserva_id }} · Asiento {{ resultado.asiento }} · USD {{ resultado.precio.toFixed(2) }}</p><p class="small muted">El cobro en efectivo y el boleto quedaron registrados correctamente.</p><div class="success-actions"><button class="btn-primary" :disabled="ocupado" @click="ejecutar(()=>descargar(`/boletos/${resultado.reserva_id}/descarga`,`boleto-${resultado.reserva_id}.html`))">Descargar boleto</button><button class="btn-secondary" :disabled="ocupado" @click="ejecutar(()=>descargar(`/boletos/${resultado.reserva_id}/qr`,`qr-${resultado.reserva_id}.png`))">Descargar QR</button><button class="btn-secondary" :disabled="ocupado" @click="nuevaVenta">Nueva venta</button></div></div>
+<template v-else><section v-if="paso===1" class="card"><div class="card-heading"><div><h2>Encuentra la salida adecuada</h2><p>Selecciona una provincia y después una ciudad con conexión disponible.</p></div></div><form class="card-body counter-search" @submit.prevent="buscar"><SelectorDestino v-model="consulta.origen" etiqueta="Origen" es-origen :disabled="ocupado"/><SelectorDestino v-model="consulta.destino" etiqueta="Destino" :origen="consulta.origen" :disabled="ocupado"/><label class="form-field">Fecha de salida<input v-model="consulta.fecha" type="date" :min="hoy()" required :disabled="ocupado"></label><button class="btn-primary" :disabled="ocupado"><AppIcon name="search" :size="17"/>{{ ocupado?'Buscando…':'Buscar salidas' }}</button></form></section>
+<section v-if="paso===1&&busquedaHecha" class="card" style="margin-top:22px"><div class="card-heading"><h2>Salidas disponibles</h2><span class="small muted">{{ viajes.length }} resultados</span></div><div v-if="!viajes.length" class="empty-state"><AppIcon name="route" :size="32"/><h3>No encontramos salidas</h3><p>Prueba otra fecha o una conexión distinta.</p></div><div v-else class="table-scroll"><table class="data-table"><thead><tr><th>Recorrido y cooperativa</th><th>Horario</th><th>Disponibilidad</th><th>Tarifa</th><th></th></tr></thead><tbody><tr v-for="v in viajes" :key="v.id"><td><strong>{{ v.origen }} → {{ v.destino }}</strong><small>{{ v.cooperativa.nombre }} · {{ v.numero_disco }}</small></td><td class="numeric">{{ v.hora_salida }} — {{ v.hora_llegada }}</td><td>{{ v.asientos_disponibles }} asientos</td><td>USD {{ v.precio.toFixed(2) }}</td><td><button class="btn-secondary" :disabled="ocupado||!v.asientos_disponibles" @click="elegir(v)">Elegir viaje</button></td></tr></tbody></table></div></section>
+<div v-if="viaje&&mapa&&paso>1" class="section-grid sale-layout"><section class="card"><div class="card-heading"><div><h2>{{ paso===2?'Elige un asiento':'Datos del pasajero' }}</h2><p>{{ viaje.origen }} → {{ viaje.destino }} · {{ viaje.fecha }} · {{ viaje.hora_salida }}</p></div><button class="btn-quiet" :disabled="ocupado||!!payloadPendiente" @click="paso=paso===2?1:2">Volver</button></div><div v-if="paso===2" class="card-body"><label class="form-field seat-filter">Tipo de asiento<select v-model="tipoAsiento"><option value="">Todos los asientos</option><option value="NORMAL">Normal</option><option value="VIP">VIP</option></select></label><MapaAsientos :vip="viaje.asientos_vip||[]" :tipo="tipoAsiento" :capacidad="mapa.capacidad_total" :ocupados="mapa.asientos_ocupados" :seleccionados="asiento?[asiento]:[]" @alternar="n=>asiento=asiento===n?null:n"/><div class="form-actions" style="margin-top:20px"><button class="btn-primary" :disabled="!asiento" @click="continuar">Continuar con el pasajero<AppIcon name="arrow" :size="17"/></button></div></div>
+<form v-else class="card-body" @submit.prevent="vender"><fieldset :disabled="ocupado||!!payloadPendiente" class="form-grid sale-fieldset"><label class="form-field full-width">Nombre y apellido<input v-model.trim="pasajero.nombre" required minlength="3" maxlength="100" autocomplete="name"></label><label class="form-field">Cédula ecuatoriana<input v-model="pasajero.cedula" required pattern="[0-9]{10}" maxlength="10" inputmode="numeric"></label><label class="form-field">Tarifa del pasajero<select v-model="pasajero.tipo"><option v-for="t in TIPOS_PASAJERO" :key="t.valor" :value="t.valor">{{ t.etiqueta }}</option></select></label><label v-if="pasajero.tipo!=='GENERAL'" class="check-label full-width"><input v-model="verificado" type="checkbox" required>Verifiqué la cédula y los documentos que respaldan la tarifa preferencial.</label></fieldset><div v-if="payloadPendiente" class="alert info" role="status">No se recibió una confirmación. Reintenta para recuperar el resultado de esta misma venta.</div><p class="small muted" style="margin-top:24px">Confirma esta operación después de recibir el efectivo. El importe se calcula y verifica en el servidor.</p><button class="btn-primary" :disabled="ocupado||!tarifa"><AppIcon name="ticket" :size="18"/>{{ ocupado?'Registrando venta…':payloadPendiente?'Reintentar la misma venta':'Confirmar cobro y emitir boleto' }}</button></form></section>
+<aside class="card sale-summary"><div class="card-heading"><h2>Resumen de la venta</h2><AppIcon name="ticket"/></div><div class="card-body"><p class="receipt-tag">{{ viaje.cooperativa.nombre }}</p><h3 style="font-size:22px;font-weight:550;margin-bottom:25px">{{ viaje.origen }}<br><span class="muted">↓</span><br>{{ viaje.destino }}</h3><dl class="detail-list"><div><dt>Salida</dt><dd>{{ viaje.fecha }} · {{ viaje.hora_salida }}</dd></div><div><dt>Bus</dt><dd>{{ viaje.numero_disco }} · {{ viaje.placa }}</dd></div><div><dt>Asiento</dt><dd>{{ asiento||'Por seleccionar' }}{{ asiento&&viaje.asientos_vip?.includes(asiento)?' · VIP':'' }}</dd></div><div><dt>Medio de pago</dt><dd>Efectivo</dd></div><div v-if="tarifa?.descuento_total"><dt>Descuento</dt><dd>− USD {{ tarifa.descuento_total.toFixed(2) }}</dd></div><div class="total"><dt>Total a cobrar</dt><dd>{{ tarifa?`$${tarifa.total.toFixed(2)}`:'Calculando…' }}</dd></div></dl></div></aside></div></template>
+</PanelLayout></template>
+<style scoped>.sale-steps{list-style:none;padding:0;margin:0 0 28px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.sale-steps li{display:flex;gap:10px;align-items:center;border-bottom:2px solid var(--border);padding:12px 0;font-size:12px;color:var(--muted)}.sale-steps li span{font-size:10px;border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:grid;place-items:center;font-variant-numeric:tabular-nums}.sale-steps .actual{color:var(--brand);border-bottom-color:var(--brand);font-weight:650}.sale-steps .actual span,.sale-steps .completo span{background:var(--brand-soft);border-color:var(--brand-soft);color:var(--brand)}.counter-search{display:grid;grid-template-columns:1fr 1fr 160px auto;gap:18px;align-items:end}.sale-layout{grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr)}.sale-summary{position:sticky;top:20px}.sale-fieldset{border:0;padding:0;margin:0;min-width:0}.seat-filter{max-width:240px;margin:0 auto 24px}.sale-success{padding:48px 25px;text-align:center}.sale-success h2{font-size:28px;font-weight:550}.success-emblem{width:65px;height:65px;border-radius:50%;display:grid;place-items:center;background:var(--success-bg);color:var(--success);margin:0 auto 25px}.success-actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:28px}@media(max-width:1200px){.counter-search{grid-template-columns:1fr 1fr}.sale-layout{grid-template-columns:1fr}.sale-summary{position:static}}@media(max-width:620px){.counter-search{grid-template-columns:1fr}.sale-steps{gap:6px}.sale-steps li{flex-direction:column;align-items:flex-start;gap:8px;font-size:10px}}</style>

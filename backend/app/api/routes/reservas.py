@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
@@ -20,6 +20,7 @@ from app.schemas.reservas import (
     ReservaUpdate,
 )
 from app.services.tarifas import calcular_pasajero
+from app.services.operacion import hoy, tramo, bus_disponible, sincronizar_ocupacion, notificar, cedula_valida
 
 router = APIRouter(prefix="/reservas", tags=["reservas"])
 STAFF_ROLES = (Role.ADMINISTRADOR, Role.OFICINISTA)
@@ -42,11 +43,12 @@ def _corregir_reservas_expiradas(db: Session) -> None:
     if expiradas:
         for r in expiradas:
             r.estado = "EXPIRADA"
+            sincronizar_ocupacion(db, r)
         db.commit()
 
 
 def _owned_reservation(db: Session, reservation_id: int, user: Usuario) -> Reserva:
-    reservation = db.get(Reserva, reservation_id)
+    reservation = db.scalar(select(Reserva).where(Reserva.id == reservation_id).with_for_update())
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     staff_roles = {normalize_role(role) for role in STAFF_ROLES}
@@ -70,17 +72,20 @@ def _check_seat(
     travel_date: date,
     seat: int,
     exclude_id: int | None = None,
+    origen_orden: int = 0,
+    destino_orden: int | None = None,
 ) -> None:
-    bus = db.get(Bus, frequency.bus_id)
-    if bus is None or not bus.activo:
-        raise HTTPException(status_code=409, detail="El bus de esta frecuencia no está disponible")
+    bus = bus_disponible(db, frequency, travel_date)
+    _, destino_orden = tramo(db, frequency, origen_orden, destino_orden)
     if seat > bus.capacidad_asientos:
         raise HTTPException(status_code=422, detail="El asiento supera la capacidad del bus")
     query = select(Reserva.id).where(
         Reserva.frecuencia_id == frequency.id,
         Reserva.fecha_viaje == travel_date,
         Reserva.asiento == seat,
-        Reserva.estado.not_in(["CANCELADA", "EXPIRADA"]),
+        Reserva.estado.notin_(["CANCELADA", "EXPIRADA"]),
+        Reserva.origen_orden < destino_orden,
+        Reserva.destino_orden > origen_orden,
     )
     if exclude_id is not None:
         query = query.where(Reserva.id != exclude_id)
@@ -95,27 +100,30 @@ def _check_seat(
 def get_seat_availability(
     frequency_id: int,
     fecha: date = Query(..., description="Fecha del viaje a consultar (YYYY-MM-DD)"),
+    origen_orden: int = Query(0, ge=0),
+    destino_orden: int | None = Query(None, gt=0),
     db: Session = Depends(get_db),
 ) -> DisponibilidadAsientosResponse:
     frequency = db.get(Frecuencia, frequency_id)
     if frequency is None or not frequency.activo:
         raise HTTPException(status_code=404, detail="Frecuencia no encontrada o inactiva")
 
-    bus = db.get(Bus, frequency.bus_id)
-    if bus is None or not bus.activo:
-        raise HTTPException(status_code=409, detail="El bus asignado a la frecuencia no está disponible")
+    bus = bus_disponible(db, frequency, fecha)
+    _, destino_orden = tramo(db, frequency, origen_orden, destino_orden)
 
     # Consultar los números de asientos ocupados para esa fecha (excluyendo canceladas)
     query = select(Reserva.asiento).where(
         Reserva.frecuencia_id == frequency.id,
         Reserva.fecha_viaje == fecha,
-        Reserva.estado.not_in(["CANCELADA", "EXPIRADA"]),
+        Reserva.estado.notin_(["CANCELADA", "EXPIRADA"]),
+        Reserva.origen_orden < destino_orden,
+        Reserva.destino_orden > origen_orden,
     )
-    occupied_seats = sorted(list(db.scalars(query)))
+    occupied_seats = sorted(set(db.scalars(query)))
     all_seats = list(range(1, bus.capacidad_asientos + 1))
     available_seats = [s for s in all_seats if s not in occupied_seats]
     seat_map = [
-        AsientoEstado(numero=s, ocupado=(s in occupied_seats))
+        AsientoEstado(numero=s, ocupado=(s in occupied_seats), tipo="VIP" if str(s) in bus.asientos_vip.split(",") else "NORMAL")
         for s in all_seats
     ]
 
@@ -138,14 +146,21 @@ def create_reservation(
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> Reserva:
-    if payload.fecha_viaje < date.today():
+    if payload.fecha_viaje < hoy():
         raise HTTPException(status_code=422, detail="La fecha del viaje no puede estar en el pasado")
-    frequency = db.get(Frecuencia, payload.frecuencia_id)
+    frequency = db.scalar(select(Frecuencia).where(Frecuencia.id == payload.frecuencia_id).with_for_update())
     if frequency is None or not frequency.activo:
         raise HTTPException(status_code=404, detail="Frecuencia no encontrada o inactiva")
-    _check_seat(db, frequency, payload.fecha_viaje, payload.asiento)
+    if normalize_role(user.rol) not in {"admin", "oficinista", "cliente"}:
+        raise HTTPException(403, "Este rol no puede realizar ventas")
+    puntos, destino = tramo(db, frequency, payload.origen_orden, payload.destino_orden)
+    _check_seat(db, frequency, payload.fecha_viaje, payload.asiento, origen_orden=payload.origen_orden, destino_orden=destino)
+    if payload.pasajero_cedula and not cedula_valida(payload.pasajero_cedula):
+        raise HTTPException(422, "Cédula ecuatoriana inválida")
+    if payload.tipo_pasajero.value != "GENERAL" and not cedula_valida(payload.pasajero_cedula):
+        raise HTTPException(422, "Debe registrar una cédula válida para solicitar el descuento")
     passenger_type = payload.tipo_pasajero
-    _, _, amount = calcular_pasajero(frequency.precio, passenger_type)
+    _, _, amount = calcular_pasajero(round(frequency.precio * (puntos[destino][2] - puntos[payload.origen_orden][2]), 2), passenger_type)
     reservation = Reserva(
         usuario_id=user.id,
         frecuencia_id=frequency.id,
@@ -154,9 +169,16 @@ def create_reservation(
         tipo_pasajero=passenger_type.value,
         precio=float(amount),
         estado="PENDIENTE",
+        origen_orden=payload.origen_orden,
+        destino_orden=destino,
+        pasajero_nombre=payload.pasajero_nombre or user.nombre,
+        pasajero_cedula=payload.pasajero_cedula or user.cedula,
     )
     db.add(reservation)
     try:
+        db.flush()
+        sincronizar_ocupacion(db, reservation)
+        notificar(db, reservation.usuario_id, f"Reserva {reservation.id} creada; pendiente de pago.")
         db.commit()
         db.refresh(reservation)
     except IntegrityError:
@@ -201,6 +223,10 @@ def get_purchase_history(
             Reserva.fecha_viaje,
             Reserva.asiento,
             Reserva.tipo_pasajero,
+            Reserva.origen_orden,
+            Reserva.destino_orden,
+            Reserva.pasajero_nombre,
+            Reserva.pasajero_cedula,
             Reserva.precio,
             Reserva.estado,
         )
@@ -219,7 +245,18 @@ def get_purchase_history(
         query = query.where(Reserva.estado == estado.upper())
 
     rows = db.execute(query).mappings().all()
-    return [HistorialCompraItem(**row) for row in rows]
+    resultado = []
+    from app.services.operacion import puntos_ruta
+    for row in rows:
+        datos = dict(row)
+        f = db.get(Frecuencia, datos["frecuencia_id"])
+        puntos = puntos_ruta(db, db.get(Ruta, f.ruta_id))
+        origen_orden = datos.pop("origen_orden")
+        datos["hora_salida"] = (datetime.combine(datos["fecha_viaje"], f.hora_salida) + timedelta(minutes=puntos[origen_orden][1])).time()
+        datos["origen"] = puntos[origen_orden][0]
+        datos["destino"] = puntos[datos.pop("destino_orden")][0]
+        resultado.append(HistorialCompraItem(**datos))
+    return resultado
 
 @router.get("/{reservation_id}", response_model=ReservaResponse, summary="Consultar una reserva")
 def get_reservation(
@@ -247,12 +284,13 @@ def update_reservation(
     _sincronizar_reserva_expirada(db, reservation)
     if reservation.estado != "PENDIENTE":
         raise HTTPException(status_code=409, detail="Solo se pueden modificar reservas pendientes")
-    frequency = db.get(Frecuencia, reservation.frecuencia_id)
+    frequency = db.scalar(select(Frecuencia).where(Frecuencia.id == reservation.frecuencia_id).with_for_update())
     if frequency is None or not frequency.activo:
         raise HTTPException(status_code=409, detail="La frecuencia ya no está disponible")
-    _check_seat(db, frequency, reservation.fecha_viaje, payload.asiento, exclude_id=reservation.id)
+    _check_seat(db, frequency, reservation.fecha_viaje, payload.asiento, exclude_id=reservation.id, origen_orden=reservation.origen_orden, destino_orden=reservation.destino_orden)
     reservation.asiento = payload.asiento
     try:
+        sincronizar_ocupacion(db, reservation)
         db.commit()
         db.refresh(reservation)
     except IntegrityError:
@@ -296,6 +334,8 @@ def cancel_reservation(
         )
 
     reservation.estado = "CANCELADA"
+    sincronizar_ocupacion(db, reservation)
+    notificar(db, reservation.usuario_id, f"Reserva {reservation.id} cancelada.")
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -314,7 +354,7 @@ def update_reservation_status(
     if normalize_role(user.rol) not in staff_roles:
         raise HTTPException(status_code=403, detail="No tiene permisos para modificar estados de reserva")
 
-    reservation = db.get(Reserva, reservation_id)
+    reservation = db.scalar(select(Reserva).where(Reserva.id == reservation_id).with_for_update())
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
@@ -333,15 +373,20 @@ def update_reservation_status(
 
     # Validar que no se pague o confirme una reserva cuyo viaje ya venció
     if estado_actual in {"PENDIENTE", "PAGO_EN_REVISION"} and nuevo_estado in {"PAGADA", "CONFIRMADA"}:
-        if reservation.fecha_viaje < date.today():
+        if reservation.fecha_viaje < hoy():
             reservation.estado = "EXPIRADA"
+            sincronizar_ocupacion(db, reservation)
             db.commit()
             raise HTTPException(
                 status_code=409,
                 detail="La fecha del viaje ya venció; la reserva ha expirado y no puede pagarse ni confirmarse",
             )
 
+    if nuevo_estado in {"PAGADA", "CONFIRMADA"}:
+        raise HTTPException(409, "Use la aprobación de pagos para confirmar y emitir el boleto")
     reservation.estado = nuevo_estado
+    sincronizar_ocupacion(db, reservation)
+    notificar(db, reservation.usuario_id, f"Reserva {reservation.id}: {nuevo_estado}.")
     db.commit()
     db.refresh(reservation)
     return reservation

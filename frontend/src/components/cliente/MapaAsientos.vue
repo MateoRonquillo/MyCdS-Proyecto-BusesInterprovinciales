@@ -5,6 +5,8 @@ const props = defineProps({
   capacidad: { type: Number, required: true },
   ocupados: { type: Array, default: () => [] },
   seleccionados: { type: Array, default: () => [] },
+  vip: { type: Array, default: () => [] },
+  tipo: { type: String, default: '' },
 })
 const emit = defineEmits(['alternar'])
 
@@ -22,27 +24,29 @@ const estado = (n) => (props.ocupados.includes(n) ? 'ocupado' : props.selecciona
     <div v-for="(fila, i) in filas" :key="i" class="fila">
       <template v-for="(n, j) in fila" :key="j">
         <span v-if="j === 2" class="pasillo" aria-hidden="true"></span>
-        <button v-else-if="n" type="button" class="asiento" :class="estado(n)" :disabled="estado(n) === 'ocupado'"
-          :aria-label="`Asiento ${n}, ${estado(n)}`" :aria-pressed="estado(n) === 'elegido'" @click="emit('alternar', n)">{{ n }}</button>
+        <button v-else-if="n" type="button" class="asiento" :class="[estado(n), { vip: vip.includes(n) }]" :disabled="estado(n) === 'ocupado' || (tipo === 'VIP' && !vip.includes(n)) || (tipo === 'NORMAL' && vip.includes(n))"
+          :aria-label="`Asiento ${n}, ${vip.includes(n) ? 'VIP' : 'normal'}, ${estado(n)}`" :aria-pressed="estado(n) === 'elegido'" @click="emit('alternar', n)">{{ n }}{{ vip.includes(n) ? '★' : '' }}</button>
         <span v-else class="vacio"></span>
       </template>
     </div>
     <div class="leyenda">
-      <span><i class="libre"></i>Libre</span><span><i class="elegido"></i>Tu selección</span><span><i class="ocupado"></i>Ocupado</span>
+      <span>★ VIP</span><span><i class="libre"></i>Libre</span><span><i class="elegido"></i>Tu selección</span><span><i class="ocupado"></i>Ocupado</span>
     </div>
   </div>
 </template>
 
 <style scoped>
-.bus { width: fit-content; margin: 0 auto; padding: 14px 20px 18px; background: #f4f8f9; border: 2px solid #cfe0e4; border-radius: 28px 28px 14px 14px; }
-.frente { text-align: right; margin-bottom: 10px; font-size: 11px; color: #788994; }
-.fila { display: grid; grid-template-columns: repeat(2, 40px) 28px repeat(2, 40px); gap: 8px; margin-bottom: 8px; }
-.asiento { height: 38px; border-radius: 8px 8px 4px 4px; border: 1.5px solid #146d83; background: #fff; color: #146d83; font-size: 12px; font-weight: 700; cursor: pointer; }
-.asiento:hover:not(:disabled) { background: #e8f4f3; }
-.asiento.elegido { background: #146d83; color: #fff; }
-.asiento.ocupado { background: #d5dde0; border-color: #d5dde0; color: #8a979d; cursor: not-allowed; }
-.leyenda { display: flex; justify-content: center; gap: 16px; margin-top: 12px; font-size: 11px; color: #697985; }
-.leyenda i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 3px; border: 1.5px solid #146d83; vertical-align: -2px; }
-.leyenda i.elegido { background: #146d83; }
-.leyenda i.ocupado { background: #d5dde0; border-color: #d5dde0; }
+.bus { width: fit-content; max-width: 100%; margin: 0 auto; padding: 14px 12px 18px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 28px 28px 14px 14px; }
+.frente { text-align: right; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
+.fila { display: grid; grid-template-columns: repeat(2, minmax(30px, 40px)) 18px repeat(2, minmax(30px, 40px)); gap: 6px; margin-bottom: 8px; }
+.asiento { height: 42px; border-radius: 8px 8px 4px 4px; border: 1.5px solid var(--brand); background: var(--surface); color: var(--brand); font-size: 12px; font-weight: 700; cursor: pointer; }
+.asiento:hover:not(:disabled) { background: var(--brand-soft); }
+.asiento.vip { border-color: var(--warning); }
+.asiento:disabled:not(.ocupado) { opacity: .3; cursor: not-allowed; }
+.asiento.elegido { background: var(--brand); color: var(--surface); }
+.asiento.ocupado { background: var(--border); border-color: var(--border); color: var(--muted); cursor: not-allowed; }
+.leyenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 12px; font-size: 11px; color: var(--muted); }
+.leyenda i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; border-radius: 3px; border: 1.5px solid var(--brand); vertical-align: -2px; }
+.leyenda i.elegido { background: var(--brand); }
+.leyenda i.ocupado { background: var(--border); border-color: var(--border); }
 </style>
