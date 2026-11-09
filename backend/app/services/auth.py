@@ -15,7 +15,7 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def authenticate_user(db: Session, correo: str, password: str) -> Usuario | None:
-    user = db.scalar(select(Usuario).where(Usuario.correo == correo))
+    user = db.scalar(select(Usuario).where(Usuario.correo == correo.strip().lower()))
     if (
         user is None
         or not user.activo

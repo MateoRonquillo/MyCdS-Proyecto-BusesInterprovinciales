@@ -5,6 +5,8 @@ from app.services.tarifas import TipoPasajero
 
 class CalculoTarifaRequest(BaseModel):
     frecuencia_id: int = Field(gt=0)
+    origen_orden: int = Field(default=0, ge=0)
+    destino_orden: int | None = Field(default=None, gt=0)
     cantidad_pasajeros: int | None = Field(default=None, ge=1, le=10)
     tipos_pasajero: list[TipoPasajero] | None = Field(default=None, min_length=1, max_length=10)
 

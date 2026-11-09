@@ -12,6 +12,10 @@ class ReservaCreate(BaseModel):
     fecha_viaje: date
     asiento: int = Field(gt=0)
     tipo_pasajero: TipoPasajero = TipoPasajero.GENERAL
+    origen_orden: int = Field(default=0, ge=0)
+    destino_orden: int | None = Field(default=None, gt=0)
+    pasajero_nombre: str | None = Field(default=None, min_length=3, max_length=100)
+    pasajero_cedula: str | None = Field(default=None, min_length=10, max_length=10)
 
 
 class ReservaUpdate(BaseModel):
@@ -29,10 +33,15 @@ class ReservaResponse(BaseModel):
     tipo_pasajero: TipoPasajero
     precio: float
     estado: str
+    origen_orden: int = 0
+    destino_orden: int = 1
+    pasajero_nombre: str | None = None
+    pasajero_cedula: str | None = None
 
 class AsientoEstado(BaseModel):
     numero: int
     ocupado: bool
+    tipo: str = "NORMAL"
 
 
 class DisponibilidadAsientosResponse(BaseModel):
@@ -47,6 +56,8 @@ class HistorialCompraItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     reserva_id: int
+    pasajero_nombre: str | None = None
+    pasajero_cedula: str | None = None
     frecuencia_id: int
     cooperativa: str
     numero_disco: str

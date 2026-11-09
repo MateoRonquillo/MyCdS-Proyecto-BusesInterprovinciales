@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import Body, APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,9 @@ from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import Boleto, Pago, PagoEstadoHistorial, Reserva, Usuario
+from app.services.operacion import hoy, notificar
 from app.schemas.pagos import (
+    AprobacionPagoRequest,
     EstadoPago,
     PagoCreate,
     PagoEstadoHistorialResponse,
@@ -88,6 +90,10 @@ def create_payment(
     is_staff = normalize_role(user.rol) in STAFF_ROLE_VALUES
     if not is_staff and reservation.usuario_id != user.id:
         raise HTTPException(status_code=403, detail="No tiene permiso para pagar esta reserva")
+    if reservation.fecha_viaje < hoy():
+        raise HTTPException(409, "El viaje ya venció")
+    if payload.metodo_pago.value == "EFECTIVO" and not is_staff:
+        raise HTTPException(403, "El efectivo solo se registra en ventanilla")
     if reservation.estado != "PENDIENTE":
         raise HTTPException(status_code=409, detail="La reserva no está pendiente de pago")
     pending_payment = db.scalar(
@@ -113,12 +119,14 @@ def create_payment(
         metodo_pago=payload.metodo_pago.value,
         monto=float(submitted),
         referencia=payload.referencia,
+        comprobante=payload.comprobante,
         estado=EstadoPago.PENDIENTE.value,
     )
     reservation.estado = "PAGO_EN_REVISION"
     db.add(payment)
     db.flush()
     _record_status_change(db, payment, None, user)
+    notificar(db, reservation.usuario_id, f"Pago de reserva {reservation.id} recibido para revisión.")
     db.commit()
     db.refresh(payment)
     return payment
@@ -178,6 +186,7 @@ def get_payment_status_history(
 )
 def approve_payment(
     payment_id: int,
+    payload: AprobacionPagoRequest = Body(default=AprobacionPagoRequest()),
     db: Session = Depends(get_db),
     reviewer: Usuario = Depends(require_roles(*STAFF_ROLES)),
 ) -> Pago:
@@ -187,6 +196,10 @@ def approve_payment(
         raise HTTPException(status_code=409, detail="El pago ya fue revisado")
     if reservation.estado != "PAGO_EN_REVISION":
         raise HTTPException(status_code=409, detail="La reserva no está en revisión de pago")
+    if reservation.fecha_viaje < hoy():
+        raise HTTPException(409, "El viaje ya venció")
+    if reservation.tipo_pasajero != "GENERAL" and not payload.descuento_verificado:
+        raise HTTPException(422, "Verifique la cédula y el respaldo del descuento antes de aprobar")
     previous_status = payment.estado
     payment.estado = EstadoPago.APROBADO.value
     payment.revisado_por_id = reviewer.id
@@ -196,6 +209,7 @@ def approve_payment(
     if ticket is None:
         db.add(Boleto(reserva_id=reservation.id, codigo=secrets.token_urlsafe(32)))
     _record_status_change(db, payment, previous_status, reviewer)
+    notificar(db, reservation.usuario_id, f"Pago aprobado. Boleto de reserva {reservation.id} disponible para descargar.")
     db.commit()
     db.refresh(payment)
     return payment
@@ -225,6 +239,16 @@ def reject_payment(
     payment.revisado_en = datetime.now(timezone.utc)
     reservation.estado = "PENDIENTE"
     _record_status_change(db, payment, previous_status, reviewer, payload.motivo)
+    notificar(db, reservation.usuario_id, f"Pago rechazado para reserva {reservation.id}: {payload.motivo}")
     db.commit()
     db.refresh(payment)
     return payment
+
+
+@router.get("/{payment_id}/comprobante")
+def ver_comprobante(payment_id: int, db: Session = Depends(get_db), user: Usuario = Depends(get_current_user)):
+    payment = _get_payment(db, payment_id)
+    _ensure_payment_access(db, payment, user)
+    if not payment.comprobante:
+        raise HTTPException(404, "Este pago no tiene comprobante")
+    return {"comprobante": payment.comprobante}

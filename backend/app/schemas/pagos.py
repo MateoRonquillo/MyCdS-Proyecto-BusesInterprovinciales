@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class MetodoPago(StrEnum):
@@ -22,11 +22,20 @@ class PagoCreate(BaseModel):
     metodo_pago: MetodoPago
     monto: Decimal = Field(gt=0, max_digits=10, decimal_places=2)
     referencia: str | None = Field(default=None, max_length=100)
+    comprobante: str | None = Field(default=None, max_length=2_700_000)
+
+    @field_validator("comprobante")
+    @classmethod
+    def imagen_valida(cls, valor):
+        from app.services.comprobantes import validar_comprobante
+        return validar_comprobante(valor)
 
     @model_validator(mode="after")
     def require_reference_for_transfer(self):
         if self.metodo_pago != MetodoPago.EFECTIVO and not (self.referencia or "").strip():
             raise ValueError("La referencia es obligatoria para depósitos y transferencias")
+        if self.metodo_pago != MetodoPago.EFECTIVO and self.comprobante is None:
+            raise ValueError("Adjunte el comprobante del depósito o transferencia")
         if self.referencia is not None:
             self.referencia = self.referencia.strip() or None
         return self
@@ -69,3 +78,7 @@ class PagoEstadoHistorialResponse(BaseModel):
     cambiado_por_id: int
     motivo: str | None
     cambiado_en: datetime
+
+
+class AprobacionPagoRequest(BaseModel):
+    descuento_verificado: bool = False
