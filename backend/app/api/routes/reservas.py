@@ -33,8 +33,11 @@ TRANSICIONES_VALIDAS: dict[str, set[str]] = {
 }
 
 def _corregir_reservas_expiradas(db: Session) -> None:
-    """Garantiza consistencia en BD pasando a EXPIRADA reservas pendientes cuya fecha ya venció."""
-    stmt = select(Reserva).where(Reserva.estado == "PENDIENTE", Reserva.fecha_viaje < date.today())
+    """Garantiza consistencia en BD pasando a EXPIRADA reservas pendientes o en revisión cuya fecha ya venció."""
+    stmt = select(Reserva).where(
+        Reserva.estado.in_(["PENDIENTE", "PAGO_EN_REVISION"]),
+        Reserva.fecha_viaje < date.today(),
+    )
     expiradas = db.scalars(stmt).all()
     if expiradas:
         for r in expiradas:
@@ -50,6 +53,15 @@ def _owned_reservation(db: Session, reservation_id: int, user: Usuario) -> Reser
     if normalize_role(user.rol) not in staff_roles and reservation.usuario_id != user.id:
         raise HTTPException(status_code=403, detail="No tiene permiso para consultar esta reserva")
     return reservation
+
+
+def _sincronizar_reserva_expirada(db: Session, reservation: Reserva) -> bool:
+    """Marca reservas vencidas según la fecha del viaje antes de operar con ellas."""
+    if reservation.estado in {"PENDIENTE", "PAGO_EN_REVISION"} and reservation.fecha_viaje < date.today():
+        reservation.estado = "EXPIRADA"
+        db.commit()
+        return True
+    return False
 
 
 def _check_seat(
@@ -215,7 +227,9 @@ def get_reservation(
     db: Session = Depends(get_db),
     user: Usuario = Depends(get_current_user),
 ) -> Reserva:
-    return _owned_reservation(db, reservation_id, user)
+    reservation = _owned_reservation(db, reservation_id, user)
+    _sincronizar_reserva_expirada(db, reservation)
+    return reservation
 
 
 @router.put(
@@ -230,6 +244,7 @@ def update_reservation(
     user: Usuario = Depends(get_current_user),
 ) -> Reserva:
     reservation = _owned_reservation(db, reservation_id, user)
+    _sincronizar_reserva_expirada(db, reservation)
     if reservation.estado != "PENDIENTE":
         raise HTTPException(status_code=409, detail="Solo se pueden modificar reservas pendientes")
     frequency = db.get(Frecuencia, reservation.frecuencia_id)
@@ -256,6 +271,7 @@ def cancel_reservation(
     user: Usuario = Depends(get_current_user),
 ) -> Response:
     reservation = _owned_reservation(db, reservation_id, user)
+    _sincronizar_reserva_expirada(db, reservation)
     if reservation.estado == "CANCELADA":
         raise HTTPException(status_code=409, detail="La reserva ya está cancelada")
     if reservation.estado not in {"PENDIENTE", "PAGO_EN_REVISION"}:
