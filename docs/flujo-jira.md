@@ -10,7 +10,7 @@ Establecer el procedimiento para registrar, asignar, desarrollar, revisar y cerr
 - **Historia de usuario:** funcionalidad requerida por un usuario del sistema.
 - **Error (Bug):** problema detectado durante el desarrollo o las pruebas.
 - **Mejora:** modificación destinada a optimizar una funcionalidad existente.
-
+ 
 ## 3. Registro de solicitudes
 
 Cada solicitud debe contener:
