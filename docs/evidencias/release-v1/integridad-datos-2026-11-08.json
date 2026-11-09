@@ -1,0 +1,17 @@
+{
+  "fecha_revision": "2026-11-08",
+  "reservas_verificadas": 10,
+  "pagos_verificados": 6,
+  "boletos_verificados": 4,
+  "ocupaciones_verificadas": 23,
+  "incidencias": {
+    "ocupaciones_faltantes": 0,
+    "ocupaciones_sobrantes": 0,
+    "asientos_fuera_de_capacidad": 0,
+    "tramos_invalidos": 0,
+    "pagos_con_monto_distinto": 0,
+    "confirmadas_sin_pago_aprobado": 0,
+    "confirmadas_sin_boleto": 0
+  },
+  "datos_modificados": false
+}
