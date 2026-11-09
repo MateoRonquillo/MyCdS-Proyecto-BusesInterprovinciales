@@ -19,3 +19,12 @@ venv/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Respaldos, reportes locales y bases de prueba
+backups/
+*.sql
+*.db
+backend/reports/
+
+# Documentación local de preparación de release
+/docs/release/
