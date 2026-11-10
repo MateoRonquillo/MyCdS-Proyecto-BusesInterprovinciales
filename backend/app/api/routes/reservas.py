@@ -37,7 +37,7 @@ def _corregir_reservas_expiradas(db: Session) -> None:
     """Garantiza consistencia en BD pasando a EXPIRADA reservas pendientes o en revisión cuya fecha ya venció."""
     stmt = select(Reserva).where(
         Reserva.estado.in_(["PENDIENTE", "PAGO_EN_REVISION"]),
-        Reserva.fecha_viaje < date.today(),
+        Reserva.fecha_viaje < hoy(),
     )
     expiradas = db.scalars(stmt).all()
     if expiradas:
@@ -59,7 +59,7 @@ def _owned_reservation(db: Session, reservation_id: int, user: Usuario) -> Reser
 
 def _sincronizar_reserva_expirada(db: Session, reservation: Reserva) -> bool:
     """Marca reservas vencidas según la fecha del viaje antes de operar con ellas."""
-    if reservation.estado in {"PENDIENTE", "PAGO_EN_REVISION"} and reservation.fecha_viaje < date.today():
+    if reservation.estado in {"PENDIENTE", "PAGO_EN_REVISION"} and reservation.fecha_viaje < hoy():
         reservation.estado = "EXPIRADA"
         db.commit()
         return True
