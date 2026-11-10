@@ -9,7 +9,7 @@ from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import Bus, Cooperativa, Frecuencia, Ruta, Parada, Reserva, Jornada, Usuario, Configuracion, Notificacion
-from app.schemas.gestion import BusDatos, CooperativaDatos, FrecuenciaDatos, RutaDatos, JornadaDatos, ConfiguracionDatos
+from app.schemas.gestion import BusDatos, CooperativaDatos, FrecuenciaDatos, RutaDatos, JornadaDatos, TripulacionJornadaDatos, ConfiguracionDatos
 from app.services.operacion import hoy
 
 router = APIRouter(tags=["gestión"])
@@ -144,6 +144,36 @@ def listar_jornadas(fecha: date, db: Session = Depends(get_db), user: Usuario = 
     return [serializar(j) for j in db.scalars(query)]
 
 
+def verificar_tripulante(db, usuario_id, bus, frecuencia_id, rol):
+    if usuario_id is None:
+        return
+    persona = db.get(Usuario, usuario_id)
+    if (not frecuencia_id or not persona or not persona.activo
+            or normalize_role(persona.rol) != rol
+            or persona.cooperativa_id != bus.cooperativa_id):
+        raise HTTPException(422, f"Seleccione un {rol} activo de la cooperativa del bus y una salida")
+
+
+@router.patch("/jornadas/{item_id}/chofer")
+@router.patch("/jornadas/{item_id}/tripulacion")
+def asignar_tripulacion(item_id: int, payload: TripulacionJornadaDatos, db: Session = Depends(get_db),
+                        user: Usuario = Depends(require_roles(*GESTORES))):
+    jornada = db.scalar(select(Jornada).where(Jornada.id == item_id).with_for_update())
+    if not jornada:
+        raise HTTPException(404, "Jornada no encontrada")
+    if jornada.fecha < hoy():
+        raise HTTPException(409, "No se puede modificar una jornada pasada")
+    bus = db.get(Bus, jornada.bus_id)
+    verificar_alcance(db, user, bus.cooperativa_id)
+    cambios = payload.model_dump(exclude_unset=True)
+    for campo, rol in (("chofer_id", Role.CHOFER), ("ayudante_id", Role.AYUDANTE)):
+        if campo in cambios:
+            verificar_tripulante(db, cambios[campo], bus, jornada.frecuencia_id, rol)
+            setattr(jornada, campo, cambios[campo])
+    guardar(db)
+    return serializar(jornada)
+
+
 @router.post("/jornadas", status_code=201)
 def crear_jornada(payload: JornadaDatos, db: Session = Depends(get_db), user: Usuario = Depends(require_roles(*GESTORES))):
     if payload.fecha < hoy():
@@ -158,6 +188,8 @@ def crear_jornada(payload: JornadaDatos, db: Session = Depends(get_db), user: Us
             raise HTTPException(422, "Seleccione una frecuencia activa asignada a este bus")
     if db.scalar(select(Reserva.id).join(Frecuencia, Frecuencia.id == Reserva.frecuencia_id).where(Frecuencia.bus_id == bus.id, Reserva.fecha_viaje == payload.fecha, Reserva.estado.notin_(["CANCELADA", "EXPIRADA"]), Reserva.frecuencia_id != (payload.frecuencia_id or -1)).limit(1)):
         raise HTTPException(409, "La planificación dejaría reservas existentes sin salida")
+    verificar_tripulante(db, payload.chofer_id, bus, payload.frecuencia_id, Role.CHOFER)
+    verificar_tripulante(db, payload.ayudante_id, bus, payload.frecuencia_id, Role.AYUDANTE)
     j = Jornada(**payload.model_dump())
     db.add(j)
     guardar(db)

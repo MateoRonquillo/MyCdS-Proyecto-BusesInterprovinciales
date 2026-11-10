@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from sqlalchemy import select, func
-from app.models.core_models import Usuario, Reserva, Pago, Boleto, VentaPresencial
+from app.models.core_models import Usuario, Reserva, Pago, Boleto, CorreoBoleto, VentaPresencial
+from app.services import correo_boletos
 from app.services.operacion import hoy
 from test_release import entorno
 
@@ -33,11 +36,12 @@ def test_venta_fallida_revierte_reserva_pago_y_ocupacion(entorno,monkeypatch):
     c,sessions,estado=entorno
     estado['usuario']=2
     monkeypatch.setattr('app.api.routes.paneles.secrets.token_urlsafe',lambda _: 'codigo-fijo-para-forzar-conflicto')
-    assert c.post('/api/v1/ventas/presencial',json=venta()).status_code==201
-    assert c.post('/api/v1/ventas/presencial',json=venta(asiento=6,clave_operacion='operacion-prueba-0002')).status_code==409
+    assert c.post('/api/v1/ventas/presencial',json=venta(pasajero_correo='cliente@test.ec')).status_code==201
+    assert c.post('/api/v1/ventas/presencial',json=venta(asiento=6, clave_operacion='operacion-prueba-0002', pasajero_correo='cliente@test.ec')).status_code==409
     with sessions() as db:
         assert db.scalar(select(func.count()).select_from(Reserva))==1
         assert db.scalar(select(func.count()).select_from(Pago))==1
+        assert db.scalar(select(func.count()).select_from(CorreoBoleto))==1
     disponibles=c.get('/api/v1/reservas/disponibilidad/1',params={'fecha':str(hoy())}).json()
     assert 6 in disponibles['asientos_disponibles']
 
@@ -143,3 +147,106 @@ def test_boleto_presenta_hora_del_tramo_y_escapa_texto(entorno):
     assert '<script>' not in boleto.text and '&lt;script&gt;' in boleto.text
     historial=c.get('/api/v1/reservas/historial').json()
     assert historial[0]['hora_salida']=='11:30:00'
+
+
+def test_correo_ventanilla_reintenta_y_adjunta_el_mismo_qr(entorno, monkeypatch):
+    c, sessions, estado = entorno
+    estado['usuario'] = 2
+    ruta = '/api/v1/ventas/presencial'
+    assert c.post(ruta, json=venta(pasajero_correo='persona@test.ec,otra@test.ec')).status_code == 422
+    payload = venta(pasajero_correo='viajero@test.ec')
+    respuesta = c.post(ruta, json=payload)
+    assert respuesta.status_code == 201
+    reserva_id = respuesta.json()['reserva_id']
+    assert respuesta.json()['correo_estado'] == 'PENDIENTE'
+    assert c.post(ruta, json=payload).status_code == 200
+    assert c.post(ruta, json=venta(pasajero_correo='otro@test.ec')).status_code == 409
+    qr = c.get(f'/api/v1/boletos/{reserva_id}/qr').content
+    mensajes = []
+
+    class GmailSimulado:
+        def __init__(self, host, port, *, timeout, context):
+            assert (host, port) == ('smtp.gmail.com', 465)
+
+        def login(self, remitente, clave):
+            assert remitente == 'pasajes@gmail.com'
+
+        def send_message(self, mensaje):
+            mensajes.append(mensaje)
+            if len(mensajes) == 1:
+                raise TimeoutError()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(correo_boletos.smtplib, 'SMTP_SSL', GmailSimulado)
+    assert correo_boletos.procesar_correo('pasajes@gmail.com', 'clave-de-prueba', sessions)
+    assert not correo_boletos.procesar_correo('pasajes@gmail.com', 'clave-de-prueba', sessions)
+    with sessions() as db:
+        correo = db.get(CorreoBoleto, reserva_id)
+        assert correo.intentos == 1 and correo.estado == 'PENDIENTE'
+        assert db.get(Reserva, reserva_id).estado == 'CONFIRMADA'
+        correo.disponible_en = correo_boletos._ahora() - timedelta(seconds=1)
+        db.commit()
+    assert correo_boletos.procesar_correo('pasajes@gmail.com', 'clave-de-prueba', sessions)
+    assert not correo_boletos.procesar_correo('pasajes@gmail.com', 'clave-de-prueba', sessions)
+    with sessions() as db:
+        assert db.get(CorreoBoleto, reserva_id).estado == 'ENVIADO'
+    assert mensajes[0]['Message-ID'] == mensajes[1]['Message-ID']
+    assert str(mensajes[1]['To']) == 'viajero@test.ec'
+    assert next(mensajes[1].iter_attachments()).get_payload(decode=True) == qr
+
+
+def test_chofer_emite_y_registra_ingreso_en_salida_asignada(entorno):
+    c, _, estado = entorno
+    estado['usuario'] = 3
+    salida = '/api/v1/ventas/presencial'
+    assert c.post(salida, json=venta()).status_code == 403
+
+    estado['usuario'] = 4
+    jornada = c.post('/api/v1/jornadas', json={
+        'fecha': str(hoy()), 'bus_id': 1, 'frecuencia_id': 1,
+    })
+    assert jornada.status_code == 201
+    asignar = f"/api/v1/jornadas/{jornada.json()['id']}/chofer"
+    assert c.patch(asignar, json={'chofer_id': 2}).status_code == 422
+    assert c.patch(asignar, json={'chofer_id': 3}).status_code == 200
+
+    estado['usuario'] = 3
+    assert c.get('/api/v1/panel/mis-salidas', params={'fecha': str(hoy())}).json() == [1]
+    assert c.post(salida, json=venta(fecha_viaje=str(hoy() + timedelta(days=1)))).status_code == 403
+    respuesta = c.post(salida, json=venta())
+    assert respuesta.status_code == 201
+    reserva = respuesta.json()['reserva_id']
+    ingreso = f'/api/v1/boletos/{reserva}/abordar'
+    assert c.post(ingreso).status_code == 201
+    assert c.post(ingreso).status_code == 409
+    assert c.get('/api/v1/panel/manifiesto').json()[0]['abordado_en']
+
+
+
+def test_ayudante_emite_solo_para_su_salida(entorno):
+    c, sessions, estado = entorno
+    with sessions() as db:
+        db.add(Usuario(id=6, nombre='Ayudante', correo='ayudante@test.ec',
+                       cedula='1710034072', rol='ayudante', cooperativa_id=1))
+        db.commit()
+    estado['usuario'] = 6
+    ventas = '/api/v1/ventas/presencial'
+    assert c.post(ventas, json=venta()).status_code == 403
+
+    estado['usuario'] = 4
+    jornada = c.post('/api/v1/jornadas', json={
+        'fecha': str(hoy()), 'bus_id': 1, 'frecuencia_id': 1, 'chofer_id': 3,
+    })
+    assert jornada.status_code == 201
+    tripulacion = f"/api/v1/jornadas/{jornada.json()['id']}/tripulacion"
+    assert c.patch(tripulacion, json={'ayudante_id': 3}).status_code == 422
+    asignacion = c.patch(tripulacion, json={'ayudante_id': 6})
+    assert asignacion.status_code == 200
+    assert asignacion.json()['chofer_id'] == 3
+
+    estado['usuario'] = 6
+    assert c.get('/api/v1/panel/mis-salidas', params={'fecha': str(hoy())}).json() == [1]
+    assert c.post(ventas, json=venta(fecha_viaje=str(hoy() + timedelta(days=1)))).status_code == 403
+    assert c.post(ventas, json=venta()).status_code == 201

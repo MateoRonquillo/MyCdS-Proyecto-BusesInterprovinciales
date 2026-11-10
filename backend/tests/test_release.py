@@ -14,7 +14,7 @@ from sqlalchemy.pool import StaticPool
 from app.api.dependencies import get_current_user
 from app.db.database import Base, get_db
 from app.main import create_app
-from app.models.core_models import Abordaje, Boleto, Bus, Cooperativa, Frecuencia, Parada, Reserva, Ruta, Usuario
+from app.models.core_models import Abordaje, Boleto, Bus, Cooperativa, CorreoBoleto, Frecuencia, Parada, Reserva, Ruta, Usuario
 from app.services.operacion import hoy
 
 
@@ -115,6 +115,8 @@ def test_pago_revision_boleto_y_abordaje_unico(entorno):
     assert c.post('/api/v1/pagos', json=body).status_code == 409
     assert c.get(f"/api/v1/boletos/{r['id']}/qr").status_code == 409
     assert c.post(f"/api/v1/pagos/{pago.json()['id']}/aprobar").status_code == 403
+    with sessions() as db:
+        assert db.get(CorreoBoleto, r['id']) is None
     estado['usuario'] = 2
     assert c.get(f"/api/v1/pagos/{pago.json()['id']}/comprobante").json()['comprobante'] == imagen()
     assert c.post(f"/api/v1/pagos/{pago.json()['id']}/aprobar").status_code == 200
@@ -125,6 +127,8 @@ def test_pago_revision_boleto_y_abordaje_unico(entorno):
     assert html.status_code == 200 and 'Quito' in html.text and 'Cuenca' in html.text
     with sessions() as db:
         codigo = db.scalar(select(Boleto.codigo).where(Boleto.reserva_id == r['id']))
+        correo = db.get(CorreoBoleto, r['id'])
+        assert (correo.destinatario, correo.estado) == ('cliente@test.ec', 'PENDIENTE')
     assert c.post('/api/v1/boletos/abordar', json={'codigo':codigo}).status_code == 403
     estado['usuario'] = 3
     assert c.post('/api/v1/boletos/abordar', json={'codigo':codigo}).status_code == 201

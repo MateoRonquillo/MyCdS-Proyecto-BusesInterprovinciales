@@ -70,6 +70,13 @@ class JornadaDatos(Entrada):
     fecha: date
     bus_id: int = Field(gt=0)
     frecuencia_id: int | None = Field(None, gt=0)
+    chofer_id: int | None = Field(None, gt=0)
+    ayudante_id: int | None = Field(None, gt=0)
+
+
+class TripulacionJornadaDatos(Entrada):
+    chofer_id: int | None = Field(None, gt=0)
+    ayudante_id: int | None = Field(None, gt=0)
 
 
 class ConfiguracionDatos(Entrada):

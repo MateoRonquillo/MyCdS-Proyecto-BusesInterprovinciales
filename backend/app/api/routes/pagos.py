@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
+from app.services.correo_boletos import encolar_boleto
 from app.models.core_models import Boleto, Pago, PagoEstadoHistorial, Reserva, Usuario
 from app.services.operacion import hoy, notificar
 from app.schemas.pagos import (
@@ -208,6 +209,8 @@ def approve_payment(
     ticket = db.scalar(select(Boleto).where(Boleto.reserva_id == reservation.id))
     if ticket is None:
         db.add(Boleto(reserva_id=reservation.id, codigo=secrets.token_urlsafe(32)))
+    propietario = db.get(Usuario, reservation.usuario_id)
+    encolar_boleto(db, reservation.id, propietario.correo if propietario else None)
     _record_status_change(db, payment, previous_status, reviewer)
     notificar(db, reservation.usuario_id, f"Pago aprobado. Boleto de reserva {reservation.id} disponible para descargar.")
     db.commit()

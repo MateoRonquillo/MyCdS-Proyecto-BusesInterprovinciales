@@ -4,7 +4,7 @@ import json
 import secrets
 from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
-from pydantic import Field, ConfigDict
+from pydantic import Field, ConfigDict, field_validator
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -13,9 +13,10 @@ from app.api.dependencies import require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
 from app.models.core_models import (Usuario, Cooperativa, Bus, Ruta, Frecuencia, Jornada,
-    Reserva, Pago, PagoEstadoHistorial, Boleto, Abordaje, VentaPresencial)
+    Reserva, Pago, PagoEstadoHistorial, Boleto, Abordaje, VentaPresencial, CorreoBoleto)
 from app.schemas.reservas import ReservaCreate
 from app.services.operacion import hoy, tramo, puntos_ruta, bus_disponible, cedula_valida, sincronizar_ocupacion, notificar
+from app.services.correo_boletos import direccion_correo, encolar_boleto
 from app.services.tarifas import calcular_pasajero, TipoPasajero
 
 router = APIRouter(tags=["paneles"])
@@ -37,7 +38,17 @@ def opciones_panel(db: Session = Depends(get_db), user: Usuario = Depends(requir
     if user.cooperativa_id:
         coops.add(user.cooperativa_id)
     todas = normalize_role(user.rol) in {'admin', 'oficinista'}
+    tripulantes = {Role.CHOFER: [], Role.AYUDANTE: []}
+    if normalize_role(user.rol) in {Role.ADMINISTRADOR, Role.USUARIO_COOPERATIVA}:
+        query = select(Usuario).where(Usuario.rol.in_(tripulantes), Usuario.activo.is_(True))
+        if normalize_role(user.rol) != Role.ADMINISTRADOR:
+            query = query.where(Usuario.cooperativa_id == (user.cooperativa_id or -1))
+        for persona in db.scalars(query):
+            tripulantes[persona.rol].append({'id': persona.id, 'nombre': persona.nombre,
+                                           'cooperativa_id': persona.cooperativa_id})
     return {
+        'choferes': tripulantes[Role.CHOFER],
+        'ayudantes': tripulantes[Role.AYUDANTE],
         'cooperativas': [{'id': c.id, 'nombre': c.nombre} for c in db.scalars(select(Cooperativa).where(True if todas else Cooperativa.id.in_(coops)))],
         'buses': [{'id': b.id, 'nombre': f'{b.numero_disco} · {b.placa}', 'cooperativa_id': b.cooperativa_id} for b in buses],
         'rutas': [{'id': r.id, 'nombre': f'{r.origen} → {r.destino}'} for r in db.scalars(select(Ruta))],
@@ -78,6 +89,19 @@ def resumen_panel(fecha: date | None = None, db: Session = Depends(get_db), user
         'importe_confirmado': round(sum(r.precio for r in confirmadas), 2), 'salidas': salidas}
 
 
+@router.get('/panel/mis-salidas')
+def mis_salidas(fecha: date, db: Session = Depends(get_db),
+                user: Usuario = Depends(require_roles(Role.CHOFER, Role.AYUDANTE))):
+    asignacion = Jornada.chofer_id if normalize_role(user.rol) == Role.CHOFER else Jornada.ayudante_id
+    return list(db.scalars(
+        select(Frecuencia.id).join(Jornada, Jornada.frecuencia_id == Frecuencia.id)
+        .join(Bus, Bus.id == Frecuencia.bus_id)
+        .where(asignacion == user.id, Jornada.fecha == fecha,
+               Jornada.bus_id == Frecuencia.bus_id, Frecuencia.activo.is_(True),
+               Bus.cooperativa_id == user.cooperativa_id)
+    ))
+
+
 @router.get('/panel/manifiesto')
 def manifiesto(fecha: date | None = None, frecuencia_id: int | None = Query(None, gt=0),
     db: Session = Depends(get_db), user: Usuario = Depends(require_roles(Role.ADMINISTRADOR, Role.OFICINISTA, Role.CHOFER, Role.AYUDANTE))):
@@ -108,18 +132,35 @@ class VentaRequest(ReservaCreate):
     pasajero_cedula: str = Field(min_length=10, max_length=10)
     clave_operacion: str = Field(min_length=16, max_length=64, pattern=r'^[a-zA-Z0-9-]+$')
     descuento_verificado: bool = False
+    pasajero_correo: str | None = None
+
+    @field_validator('pasajero_correo')
+    @classmethod
+    def validar_correo(cls, value):
+        if value is None:
+            return None
+        if not direccion_correo(value.strip()):
+            raise ValueError('Ingresa un correo válido del pasajero')
+        return value.strip()
 
 
 def respuesta_venta(db, venta):
     reserva = db.get(Reserva, venta.reserva_id)
-    return {'reserva_id': reserva.id, 'pago_id': venta.pago_id, 'precio': reserva.precio,
-        'asiento': reserva.asiento, 'estado': reserva.estado}
+    resultado = {'reserva_id': reserva.id, 'pago_id': venta.pago_id, 'precio': reserva.precio,
+                 'asiento': reserva.asiento, 'estado': reserva.estado}
+    correo = db.get(CorreoBoleto, reserva.id)
+    if correo:
+        resultado['correo_estado'] = correo.estado
+    return resultado
 
 
 @router.post('/ventas/presencial', status_code=201)
 def venta_presencial(payload: VentaRequest, response: Response, db: Session = Depends(get_db),
-    user: Usuario = Depends(require_roles(Role.ADMINISTRADOR, Role.OFICINISTA))):
-    huella = hashlib.sha256(json.dumps(payload.model_dump(mode='json'), sort_keys=True).encode()).hexdigest()
+    user: Usuario = Depends(require_roles(Role.ADMINISTRADOR, Role.OFICINISTA, Role.CHOFER, Role.AYUDANTE))):
+    datos = payload.model_dump(mode='json')
+    if payload.pasajero_correo is None:
+        datos.pop('pasajero_correo')  # Conserva la huella de ventas anteriores.
+    huella = hashlib.sha256(json.dumps(datos, sort_keys=True).encode()).hexdigest()
     # Serializar ventas del mismo viaje y reintentos en MySQL.
     frecuencia = db.scalar(select(Frecuencia).where(Frecuencia.id == payload.frecuencia_id).with_for_update())
     existente = db.scalar(select(VentaPresencial).where(VentaPresencial.clave == payload.clave_operacion).with_for_update())
@@ -130,6 +171,16 @@ def venta_presencial(payload: VentaRequest, response: Response, db: Session = De
             raise HTTPException(409, 'La operación ya existe con otros datos; inicie una nueva venta')
         response.status_code = 200
         return respuesta_venta(db, existente)
+    rol = normalize_role(user.rol)
+    if rol in {Role.CHOFER, Role.AYUDANTE}:
+        asignacion = Jornada.chofer_id if rol == Role.CHOFER else Jornada.ayudante_id
+        asignada = db.scalar(select(Jornada.id).join(Bus, Bus.id == Jornada.bus_id).where(
+            asignacion == user.id, Jornada.fecha == payload.fecha_viaje,
+            Jornada.frecuencia_id == payload.frecuencia_id,
+            Jornada.bus_id == (frecuencia.bus_id if frecuencia else -1),
+            Bus.cooperativa_id == user.cooperativa_id).with_for_update())
+        if not asignada:
+            raise HTTPException(403, 'Solo puedes emitir boletos para tu salida asignada')
     if payload.fecha_viaje < hoy():
         raise HTTPException(422, 'No se puede vender un viaje pasado')
     if not frecuencia or not frecuencia.activo:
@@ -166,6 +217,7 @@ def venta_presencial(payload: VentaRequest, response: Response, db: Session = De
         venta = VentaPresencial(clave=payload.clave_operacion, huella=huella, usuario_id=user.id,
             reserva_id=reserva.id, pago_id=pago.id)
         db.add(venta)
+        encolar_boleto(db, reserva.id, payload.pasajero_correo)
         notificar(db, user.id, f'Venta presencial confirmada. Boleto de reserva {reserva.id} disponible.')
         db.commit()
     except IntegrityError:

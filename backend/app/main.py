@@ -1,13 +1,28 @@
+import asyncio
 import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.errors import register_exception_handlers
+from app.services.correo_boletos import entregar_boletos
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    detener = asyncio.Event()
+    tarea = asyncio.create_task(entregar_boletos(detener))
+    try:
+        yield
+    finally:
+        detener.set()
+        await tarea
 
 
 def create_app() -> FastAPI:
     application = FastAPI(
+        lifespan=lifespan,
         title="Gestion de Pasajes Ecuador API",
         description="API para la gestion de pasajes en Ecuador.",
         version="1.0.0-rc.1",
