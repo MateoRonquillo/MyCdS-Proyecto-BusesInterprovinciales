@@ -1,7 +1,7 @@
 """Regresiones de los flujos de la release; MySQL opcional con TEST_DATABASE_URL."""
 import base64
 import os
-from datetime import time, timedelta
+from datetime import date, time, timedelta
 from io import BytesIO
 
 import pytest
@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_current_user
+from app.api.routes import reservas as reservas_route
 from app.db.database import Base, get_db
 from app.main import create_app
 from app.models.core_models import Abordaje, Boleto, Bus, Cooperativa, Frecuencia, Parada, Reserva, Ruta, Usuario
@@ -90,6 +91,21 @@ def test_tramos_no_superpuestos_y_cancelacion(entorno):
     assert reservar(c, origen_orden=0, destino_orden=1).status_code == 201
     history = c.get('/api/v1/reservas/historial').json()
     assert any(r['origen'] == 'Latacunga' and r['destino'] == 'Cuenca' for r in history)
+
+
+def test_cancelacion_usa_fecha_de_ecuador_y_no_zona_del_servidor(entorno, monkeypatch):
+    c, _, _ = entorno
+    reserva = reservar(c)
+    assert reserva.status_code == 201
+
+    class FechaServidor(date):
+        @classmethod
+        def today(cls):
+            return hoy() + timedelta(days=1)
+
+    monkeypatch.setattr(reservas_route, "date", FechaServidor)
+
+    assert c.delete(f"/api/v1/reservas/{reserva.json()['id']}").status_code == 204
 
 
 def test_busqueda_tarifa_y_filtros_reales(entorno):
