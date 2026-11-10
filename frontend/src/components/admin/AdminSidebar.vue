@@ -7,7 +7,10 @@ const auth = useAuthStore(), app = useAppStore()
 const props = defineProps({ abierta: Boolean })
 const emit = defineEmits(['cerrar'])
 const enlaces = computed(() => {
-  if (auth.rolFront === 'PERSONAL') return [{nombre:'Control de abordaje', ruta:'/abordaje', icono:'scan'}]
+  if (auth.rolFront === 'PERSONAL') return [
+    {nombre:'Control de abordaje', ruta:'/abordaje', icono:'scan'},
+    {nombre:'Emitir boleto de mi ruta', ruta:'/abordaje/ventas', icono:'ticket'},
+  ]
   if (auth.rolFront === 'OFICINISTA') return [
     {nombre:'Resumen',ruta:'/oficinista',icono:'overview'}, {nombre:'Nueva venta',ruta:'/oficinista/ventas',icono:'ticket'},
     {nombre:'Reservas y boletos',ruta:'/oficinista/reservas',icono:'route'}, {nombre:'Revisión de pagos',ruta:'/oficinista/pagos',icono:'wallet'},

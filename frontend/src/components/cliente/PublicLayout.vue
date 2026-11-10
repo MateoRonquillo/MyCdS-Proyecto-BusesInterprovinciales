@@ -35,7 +35,6 @@ function salir() {
           <RouterLink to="/viajes" @click="menuAbierto = false">Buscar viajes</RouterLink>
 
           <template v-if="auth.estaAutenticado">
-            <RouterLink to="/mis-reservas" @click="menuAbierto = false">Mis reservas</RouterLink>
             <RouterLink to="/compras" @click="menuAbierto = false">Mis compras</RouterLink>
             <span class="nav-usuario">Hola, {{ auth.usuario.nombre.split(' ')[0] }}</span>
             <button type="button" class="nav-salir" @click="salir">Salir</button>

@@ -32,17 +32,13 @@ const routes = [
         component: () => import('../views/cliente/ReservaView.vue'),
         meta: { requiresAuth: true, role: 'CLIENTE' },
       },
-      {
-        path: 'mis-reservas',
-        name: 'mis-reservas',
-        component: () => import('../views/cliente/MisReservasView.vue'),
-        meta: { requiresAuth: true, role: 'CLIENTE' },
-      },
+      { path: 'mis-reservas', redirect: { name: 'compras' } },
     ],
   },
   ...adminRoutes,
   { path: '/cooperativa', component: () => import('../views/panel/ResumenView.vue'), meta: { requiresAuth: true, role: 'COOPERATIVA' } },
   { path: '/operacion', component: () => import('../views/admin/OperacionView.vue'), meta: { requiresAuth: true, role: 'COOPERATIVA' } },
+  { path: '/abordaje/ventas', component: () => import('../views/oficinista/VentaPresencialView.vue'), props: { porAsignacion: true }, meta: { requiresAuth: true, ventaAsignada: true } },
   { path: '/abordaje', component: () => import('../views/personal/AbordajeView.vue'), meta: { requiresAuth: true, role: 'PERSONAL' } },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
@@ -65,7 +61,7 @@ router.beforeEach((to) => {
       !to.meta.role ||
       auth.rolFront === to.meta.role ||
       auth.rolFront === 'ADMINISTRADOR'
-    if (!permitido) return auth.rutaInicio
+    if (!permitido || (to.meta.ventaAsignada && !['chofer', 'ayudante'].includes(auth.usuario?.rol))) return auth.rutaInicio
     if (to.path === '/operacion') {
       const destino = destinoCatalogo(auth.rolFront, to.query.seccion)
       if (router.resolve(destino).fullPath !== to.fullPath) {

@@ -17,25 +17,35 @@ const descripciones={cooperativas:'Organiza las cooperativas que forman parte de
 const seccionValida=v=>opciones.value.includes(v)?v:props.catalogo
 const tab=ref(seccionValida(route.query.seccion)), items=ref([]), error=ref(''), aviso=ref(''), cargando=ref(false), ocupado=ref(false)
 const edicion=ref(null), form=ref({}), paradas=ref([]), modal=ref(false), confirmar=ref(null), errorForm=ref(''), errorApoyo=ref(''), buscar=ref(''), pagina=ref(1)
-const relaciones=ref({cooperativas:[],buses:[],rutas:[],frecuencias:[]}), geografia=ref([])
+const relaciones=ref({cooperativas:[],buses:[],rutas:[],frecuencias:[],choferes:[],ayudantes:[]}), geografia=ref([])
 const hoy=new Date().toLocaleDateString('en-CA',{timeZone:'America/Guayaquil'}), fecha=ref(hoy)
 const campos={
  cooperativas:[['nombre','Nombre'],['logo_url','URL del logo','url'],['color_principal','Color de identidad','color'],['activo','Cooperativa activa','checkbox']],
  buses:[['placa','Placa'],['numero_disco','Número de disco'],['cooperativa_id','Cooperativa','relacion'],['capacidad_asientos','Capacidad de asientos','number'],['chasis','Marca del chasis'],['carroceria','Marca de la carrocería'],['fotografia_url','URL de la fotografía','url'],['asientos_vip','Asientos VIP (separados por coma)'],['activo','Bus activo','checkbox']],
  rutas:[['origen','Ciudad de origen','ciudad'],['destino','Ciudad de destino','ciudad'],['duracion_estimada_horas','Duración del recorrido (horas)','number'],['activo','Ruta activa','checkbox']],
  frecuencias:[['ruta_id','Ruta','relacion'],['bus_id','Bus asignado','relacion'],['hora_salida','Hora de salida','time'],['precio','Tarifa completa (USD)','number'],['resolucion_ant','Referencia de resolución ANT'],['activo','Frecuencia activa','checkbox']],
- jornadas:[['fecha','Fecha de trabajo','date'],['bus_id','Bus','relacion'],['frecuencia_id','Frecuencia (vacío = día de parada)','relacion']],
+ jornadas:[['fecha','Fecha de trabajo','date'],['bus_id','Bus','relacion'],['frecuencia_id','Frecuencia (vacío = día de parada)','relacion'],['chofer_id','Chofer de la salida','relacion'],['ayudante_id','Ayudante de la salida','relacion']],
  configuracion:[['nombre','Nombre del servicio'],['logo_url','URL del logo','url'],['color_principal','Color principal','color'],['soporte','Contacto de soporte'],['redes_sociales','Redes sociales']],
 }
-const visibles=computed(()=>campos[tab.value]||[])
+const visibles=computed(()=>tab.value==='jornadas'&&edicion.value ? campos.jornadas.filter(([key])=>['chofer_id','ayudante_id'].includes(key)) : campos[tab.value]||[])
 const filtrados=computed(()=>items.value.filter(item=>Object.values(item).some(v=>String(v??'').toLowerCase().includes(buscar.value.toLowerCase()))))
 const paginas=computed(()=>Math.max(1,Math.ceil(filtrados.value.length/8)))
 const filas=computed(()=>filtrados.value.slice((pagina.value-1)*8,pagina.value*8))
 watch(buscar,()=>pagina.value=1)
-watch(()=>form.value.bus_id,()=>{if(tab.value==='jornadas'&&form.value.frecuencia_id&&!opcionesCampo('frecuencia_id').some(f=>f.id===Number(form.value.frecuencia_id)))form.value.frecuencia_id=''})
+watch(()=>form.value.bus_id,()=>{
+ if(tab.value!=='jornadas')return
+ if(form.value.frecuencia_id&&!opcionesCampo('frecuencia_id').some(f=>f.id===Number(form.value.frecuencia_id)))form.value.frecuencia_id=''
+ for(const campo of ['chofer_id','ayudante_id']){
+  if(form.value[campo]&&!opcionesCampo(campo).some(c=>c.id===Number(form.value[campo])))form.value[campo]=''
+ }
+})
 function nombreRelacion(tipo,id){return relaciones.value[tipo]?.find(v=>v.id===id)?.nombre||`#${id}`}
 function opcionesCampo(key){
- const tabla={cooperativa_id:'cooperativas',bus_id:'buses',ruta_id:'rutas',frecuencia_id:'frecuencias'}[key]
+ const tabla={cooperativa_id:'cooperativas',bus_id:'buses',ruta_id:'rutas',frecuencia_id:'frecuencias',chofer_id:'choferes',ayudante_id:'ayudantes'}[key]
+ if(key==='chofer_id'||key==='ayudante_id'){
+  const bus=relaciones.value.buses.find(b=>b.id===Number(form.value.bus_id))
+  return (relaciones.value[tabla]||[]).filter(c=>c.cooperativa_id===bus?.cooperativa_id)
+ }
  return (relaciones.value[tabla]||[]).filter(v=>key!=='frecuencia_id'||!form.value.bus_id||v.bus_id===Number(form.value.bus_id)).map(v=>({...v,nombre:v.nombre||`${nombreRelacion('rutas',v.ruta_id)} · ${v.hora_salida?.slice(0,5)}`}))
 }
 let secuencia=0
@@ -60,7 +70,7 @@ function nuevo(item=null){
  edicion.value=item?.id??null;errorForm.value=''
  form.value=Object.fromEntries(visibles.value.map(([key,,type])=>[key,item?.[key]??(type==='checkbox'?true:type==='color'?'#185a4d':'')]))
  if(tab.value==='buses'&&!admin.value&&!form.value.cooperativa_id)form.value.cooperativa_id=relaciones.value.cooperativas[0]?.id||''
- if(tab.value==='jornadas')form.value.fecha=item?.fecha||fecha.value
+ if(tab.value==='jornadas'){form.value.fecha=item?.fecha||fecha.value;if(item)form.value.bus_id=item.bus_id}
  paradas.value=(item?.paradas||[]).map(p=>({ciudad:p.ciudad,minutos:p.minutos,proporcion_tarifa:p.proporcion_tarifa}))
  modal.value=true
 }
@@ -69,7 +79,12 @@ async function guardar(){if(ocupado.value)return;ocupado.value=true;errorForm.va
  try{const datos=Object.fromEntries(visibles.value.map(([key,,type])=>[key,['number','relacion'].includes(type)?(form.value[key]===''?null:Number(form.value[key])):type==='url'?(form.value[key]||null):form.value[key]]))
  if(tab.value==='rutas')datos.paradas=paradas.value.map(p=>({ciudad:p.ciudad,minutos:Number(p.minutos),proporcion_tarifa:Number(p.proporcion_tarifa)}))
  const singleton=tab.value==='configuracion'
- await request(`/${tab.value}${edicion.value&&!singleton?`/${edicion.value}`:''}`,{method:singleton||edicion.value?'PUT':'POST',body:JSON.stringify(datos)})
+ if(tab.value==='jornadas'&&edicion.value){
+  await request(`/jornadas/${edicion.value}/tripulacion`,{method:'PATCH',body:JSON.stringify(datos)})
+ }else{
+  if(tab.value==='jornadas'&&!datos.frecuencia_id){datos.chofer_id=null;datos.ayudante_id=null}
+  await request(`/${tab.value}${edicion.value&&!singleton?`/${edicion.value}`:''}`,{method:singleton||edicion.value?'PUT':'POST',body:JSON.stringify(datos)})
+ }
  destinos.cargado=false;modal.value=false;aviso.value='Los cambios se guardaron correctamente.';await Promise.all([cargar(),cargarApoyos()])
  }catch(e){errorForm.value=e.message}finally{ocupado.value=false}
 }
@@ -85,10 +100,10 @@ function detalle(item){return tab.value==='buses'?`${nombreRelacion('cooperativa
 <div class="toolbar"><div class="search-control"><AppIcon name="search" :size="17"/><input v-model="buscar" class="control" :aria-label="`Buscar en ${titulos[tab]}`" placeholder="Buscar en los registros…"></div><div class="toolbar-controls"><label v-if="tab==='jornadas'" class="form-field">Fecha de trabajo<input v-model="fecha" type="date" @change="fecha&&cargar()"></label><span class="small muted">{{ filtrados.length }} registros</span><button class="icon-button" :disabled="cargando" aria-label="Actualizar registros" @click="cargar"><AppIcon name="refresh"/></button></div></div>
 <p v-if="tab==='jornadas'" class="small muted">Una salida por bus y día. Registra una jornada sin frecuencia para indicar un día de parada.</p>
 <section class="card"><div v-if="cargando" class="loading-state" role="status">Cargando registros…</div><div v-else-if="!filtrados.length" class="empty-state"><AppIcon name="search" :size="32"/><h3>{{ buscar?'No hay coincidencias':'Todavía no hay registros' }}</h3><p>{{ buscar?'Prueba con otro nombre o placa.':'Crea el primer registro para comenzar.' }}</p></div>
-<div v-else class="table-scroll"><table class="data-table"><thead><tr><th>{{ tab==='buses'?'Unidad':'Registro' }}</th><th>Información</th><th>{{ tab==='jornadas'?'Asignación':'Estado' }}</th><th>Acciones</th></tr></thead><tbody><tr v-for="item in filas" :key="item.id"><td><strong>{{ principal(item) }}</strong><small>{{ detalle(item) }}</small></td><td><template v-if="tab==='buses'"><strong>{{ item.capacidad_asientos }} asientos</strong><small>{{ item.chasis||'Chasis sin registrar' }} · {{ item.carroceria||'Carrocería sin registrar' }}</small></template><template v-else-if="tab==='frecuencias'"><strong class="numeric">{{ item.hora_salida?.slice(0,5) }}</strong><small>USD {{ item.precio.toFixed(2) }}</small></template><template v-else-if="tab==='rutas'"><strong>{{ item.duracion_estimada_horas }} horas</strong><small>{{ item.paradas?.map(p=>p.ciudad).join(' · ')||'Recorrido directo' }}</small></template><template v-else-if="tab==='jornadas'"><strong>{{ item.frecuencia_id?`${relaciones.frecuencias.find(f=>f.id===item.frecuencia_id)?.hora_salida?.slice(0,5)||'Frecuencia #'+item.frecuencia_id}`:'Día de parada' }}</strong></template><template v-else><span class="color-swatch" :style="{background:item.color_principal||'#185a4d'}"></span>{{ item.color_principal||'Sin color' }}</template></td><td><span class="status-badge" :class="item.activo===false?'danger':'success'"><i></i>{{ tab==='jornadas'?(item.frecuencia_id?'Salida asignada':'Parada'):item.activo===false?'Inactivo':'Activo' }}</span></td><td><div class="table-actions"><button v-if="tab!=='jornadas'" class="btn-secondary" :disabled="!!errorApoyo" @click="nuevo(item)">Editar</button><button v-if="tab!=='configuracion'&&item.activo!==false" class="btn-quiet" @click="confirmar=item;errorForm=''">{{ tab==='jornadas'?'Eliminar':'Desactivar' }}</button></div></td></tr></tbody></table></div></section>
+<div v-else class="table-scroll"><table class="data-table"><thead><tr><th>{{ tab==='buses'?'Unidad':'Registro' }}</th><th>Información</th><th>{{ tab==='jornadas'?'Asignación':'Estado' }}</th><th>Acciones</th></tr></thead><tbody><tr v-for="item in filas" :key="item.id"><td><strong>{{ principal(item) }}</strong><small>{{ detalle(item) }}</small></td><td><template v-if="tab==='buses'"><strong>{{ item.capacidad_asientos }} asientos</strong><small>{{ item.chasis||'Chasis sin registrar' }} · {{ item.carroceria||'Carrocería sin registrar' }}</small></template><template v-else-if="tab==='frecuencias'"><strong class="numeric">{{ item.hora_salida?.slice(0,5) }}</strong><small>USD {{ item.precio.toFixed(2) }}</small></template><template v-else-if="tab==='rutas'"><strong>{{ item.duracion_estimada_horas }} horas</strong><small>{{ item.paradas?.map(p=>p.ciudad).join(' · ')||'Recorrido directo' }}</small></template><template v-else-if="tab==='jornadas'"><strong>{{ item.frecuencia_id?`${relaciones.frecuencias.find(f=>f.id===item.frecuencia_id)?.hora_salida?.slice(0,5)||'Frecuencia #'+item.frecuencia_id}`:'Día de parada' }}</strong><small v-if="item.frecuencia_id">{{ item.chofer_id ? nombreRelacion('choferes', item.chofer_id) : 'Sin chofer asignado' }}</small><small v-if="item.frecuencia_id">{{ item.ayudante_id ? nombreRelacion('ayudantes', item.ayudante_id) : 'Sin ayudante asignado' }}</small></template><template v-else><span class="color-swatch" :style="{background:item.color_principal||'#185a4d'}"></span>{{ item.color_principal||'Sin color' }}</template></td><td><span class="status-badge" :class="item.activo===false?'danger':'success'"><i></i>{{ tab==='jornadas'?(item.frecuencia_id?'Salida asignada':'Parada'):item.activo===false?'Inactivo':'Activo' }}</span></td><td><div class="table-actions"><button v-if="tab!=='jornadas'||(item.frecuencia_id&&item.fecha>=hoy)" class="btn-secondary" :disabled="!!errorApoyo" @click="nuevo(item)">{{ tab==='jornadas'?'Asignar tripulación':'Editar' }}</button><button v-if="tab!=='configuracion'&&item.activo!==false" class="btn-quiet" @click="confirmar=item;errorForm=''">{{ tab==='jornadas'?'Eliminar':'Desactivar' }}</button></div></td></tr></tbody></table></div></section>
 <div v-if="paginas>1" class="toolbar" style="margin-top:16px"><span class="small muted">Página {{ pagina }} de {{ paginas }}</span><div class="toolbar-controls"><button class="btn-secondary" :disabled="pagina===1" @click="pagina--">Anterior</button><button class="btn-secondary" :disabled="pagina===paginas" @click="pagina++">Siguiente</button></div></div>
 <AppModal :abierto="modal" :titulo="`${edicion?'Editar':'Crear'} · ${titulos[tab]}`" :ocupado="ocupado" ancho @cerrar="modal=false"><form @submit.prevent="guardar"><div v-if="errorForm" class="alert error" role="alert">{{ errorForm }}</div><div class="form-grid"><template v-for="[key,label,type] in visibles" :key="key"><label v-if="type==='checkbox'" class="check-label full-width"><input v-model="form[key]" type="checkbox">{{ label }}</label><label v-else class="form-field">{{ label }}
-<select v-if="type==='relacion'" v-model="form[key]" :required="key!=='frecuencia_id'"><option value="" :disabled="key!=='frecuencia_id'">{{ key==='frecuencia_id'?'Día de parada (sin frecuencia)':'Seleccionar…' }}</option><option v-for="op in opcionesCampo(key)" :key="op.id" :value="op.id">{{ op.nombre }}</option></select>
+<select v-if="type==='relacion'" v-model="form[key]" :required="!['frecuencia_id','chofer_id','ayudante_id'].includes(key)"><option value="" :disabled="!['frecuencia_id','chofer_id','ayudante_id'].includes(key)">{{ key==='frecuencia_id'?'Día de parada (sin frecuencia)':key==='chofer_id'?'Sin chofer asignado':key==='ayudante_id'?'Sin ayudante asignado':'Seleccionar…' }}</option><option v-for="op in opcionesCampo(key)" :key="op.id" :value="op.id">{{ op.nombre }}</option></select>
 <select v-else-if="type==='ciudad'" v-model="form[key]" required><option value="" disabled>Seleccionar ciudad</option><option v-if="form[key]&&!ciudadValida(form[key])" :value="form[key]">{{ form[key] }} (registro anterior)</option><optgroup v-for="prov in geografia" :key="prov.id" :label="prov.nombre"><option v-for="c in prov.ciudades" :key="c.id" :value="c.alias.includes(form[key])?form[key]:c.valor">{{ c.nombre }}</option></optgroup></select>
 <input v-else v-model="form[key]" :type="type||'text'" :min="type==='number'?'0.01':key==='fecha'?hoy:undefined" :step="type==='number'?'any':undefined" :required="!['logo_url','fotografia_url','chasis','carroceria','asientos_vip','soporte','redes_sociales'].includes(key)">
 <small v-if="key==='asientos_vip'">Ejemplo: 1,2,3,4. Los demás asientos se consideran normales.</small><small v-if="key==='resolucion_ant'">Registra la referencia del documento revisado por la cooperativa.</small></label></template>
