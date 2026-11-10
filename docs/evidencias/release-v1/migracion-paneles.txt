@@ -1,0 +1,29 @@
+No new upgrade operations detected.
+Migración verificada: datos preservados, ocupación migrada y esquema consistente.
+INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 44fa5271591b, migracion inicial de usuarios y cooperativas
+INFO  [alembic.runtime.migration] Running upgrade 44fa5271591b -> f715fa63d9b1, agrega tabla buses
+INFO  [alembic.runtime.migration] Running upgrade 44fa5271591b -> c87d10f2a941, Agregar hash de contrasena a usuarios.
+INFO  [alembic.runtime.migration] Running upgrade c87d10f2a941, f715fa63d9b1 -> 4b8a5e4e36dc, fusionar ramas de migracion
+INFO  [alembic.runtime.migration] Running upgrade 4b8a5e4e36dc -> 9c7f999a3974, agrega tablas rutas y frecuencias
+INFO  [alembic.runtime.migration] Running upgrade 9c7f999a3974 -> d3a1c6f9b204, agrega tabla reservas
+INFO  [alembic.runtime.migration] Running upgrade d3a1c6f9b204 -> e4b7a2c1d609, agrega categoria de pasajero a reservas
+INFO  [alembic.runtime.migration] Running upgrade e4b7a2c1d609 -> b8d4f2a6c901, agrega pagos y revisión de pagos
+INFO  [alembic.runtime.migration] Running upgrade e4b7a2c1d609 -> f8b1c9d2e3a4, restringe duplicidad de asientos por viaje
+INFO  [alembic.runtime.migration] Running upgrade f8b1c9d2e3a4 -> a6c4e2b8d901, Permitir reutilizar asientos cancelados.
+INFO  [alembic.runtime.migration] Running upgrade a6c4e2b8d901, b8d4f2a6c901 -> c9f2d7a1b604, fusiona las migraciones de reservas y pagos
+INFO  [alembic.runtime.migration] Running upgrade c9f2d7a1b604 -> f2c8a6d1b903, agrega historial de estados de pago
+INFO  [alembic.runtime.migration] Running upgrade f2c8a6d1b903 -> a7c3e9d2f104, agrega boletos con código QR
+INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade a7c3e9d2f104 -> b10000000001, Operación de la primera release: catálogos, tramos, comprobantes y abordaje.
+INFO  [alembic.runtime.migration] Running upgrade b10000000001 -> b10000000002, Venta presencial atómica con clave de reintento.
+INFO  [alembic.runtime.migration] Context impl MySQLImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.schemas
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.tables
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.types
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.constraints
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.defaults
+INFO  [alembic.runtime.plugins] setting up autogenerate plugin alembic.autogenerate.comments

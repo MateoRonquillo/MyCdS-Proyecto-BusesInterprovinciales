@@ -1,0 +1,157 @@
+name: Pruebas y compilacion
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - "release/**"
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "compose.yaml"
+      - ".env.example"
+      - ".github/workflows/ci.yml"
+      - "scripts/**"
+
+  push:
+    branches:
+      - develop
+      - main
+      - "release/**"
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "compose.yaml"
+      - ".env.example"
+      - ".github/workflows/ci.yml"
+      - "scripts/**"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    name: Pruebas del backend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar pruebas
+        run: python -m pytest -v --junitxml=reports/pytest.xml
+        env:
+          DATABASE_URL: sqlite://
+
+      - name: Guardar reporte de pruebas
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-pruebas-backend
+          path: backend/reports/pytest.xml
+          if-no-files-found: error
+          retention-days: 30
+
+  frontend-build:
+    name: Compilacion del frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar componentes y flujos de paneles
+        run: npm test
+
+      - name: Compilar frontend
+        run: npm run build
+
+  staging-check:
+    name: Verificacion de infraestructura
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Validar configuracion Docker Compose
+        run: docker compose --env-file .env.example config --quiet
+
+      - name: Construir imágenes de backend y frontend
+        run: docker compose --env-file .env.example build
+
+  mysql-integration:
+    name: Migración y concurrencia en MySQL 8
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-password"
+          --health-interval=10s --health-timeout=5s --health-retries=15
+    env:
+      DATABASE_URL: mysql+pymysql://root:ci-only-password@127.0.0.1:3306/pasajes_integration_test
+      TEST_DATABASE_URL: mysql+pymysql://root:ci-only-password@127.0.0.1:3306/pasajes_integration_test
+      MIGRATION_TEST_DATABASE_URL: mysql+pymysql://root:ci-only-password@127.0.0.1:3306/pasajes_migration_test
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Crear bases desechables
+        run: python -c "import pymysql; c=pymysql.connect(host='127.0.0.1',user='root',password='ci-only-password'); cur=c.cursor(); cur.execute('CREATE DATABASE pasajes_integration_test'); cur.execute('CREATE DATABASE pasajes_migration_test'); c.close()"
+      - name: Probar migración con datos heredados
+        run: python ../scripts/verificar_migracion.py
+      - name: Migrar base de integración
+        run: alembic upgrade head && alembic check
+      - name: Probar operación y concurrencia en MySQL
+        run: python -m pytest tests/test_release.py tests/test_paneles.py -v --junitxml=reports/mysql.xml
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: resultados-mysql
+          path: backend/reports/mysql.xml
+          if-no-files-found: warn
