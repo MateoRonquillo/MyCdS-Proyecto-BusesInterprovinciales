@@ -1,10 +1,8 @@
-import json
 import base64
 from html import escape
 from datetime import datetime, timezone, timedelta
 from io import BytesIO
 
-import qrcode
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
@@ -15,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.dependencies import get_current_user, require_roles
 from app.core.roles import Role, normalize_role
 from app.db.database import get_db
+from app.services.correo_boletos import generar_qr_boleto
 from app.services.operacion import hoy, puntos_ruta, notificar
 from app.models.core_models import Abordaje, Bus, Cooperativa, Frecuencia, Ruta, Boleto, Pago, Reserva, Usuario
 
@@ -36,12 +35,7 @@ def _approved_payment_exists(db: Session, reservation_id: int) -> bool:
     ) is not None
 
 
-@router.get("/{reserva_id}/qr", summary="Descargar el QR de un boleto pagado")
-def get_ticket_qr(
-    reserva_id: int,
-    db: Session = Depends(get_db),
-    user: Usuario = Depends(get_current_user),
-) -> StreamingResponse:
+def _boleto_autorizado(reserva_id: int, db: Session, user: Usuario):
     reservation = db.get(Reserva, reserva_id)
     if reservation is None:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -54,12 +48,17 @@ def get_ticket_qr(
         raise HTTPException(status_code=404, detail="Boleto no encontrado")
 
     _verificar_personal(db, reservation, user)
-    # El QR contiene solamente un identificador aleatorio, nunca datos personales.
-    payload = json.dumps({"tipo": "boleto-interprovincial", "codigo": ticket.codigo}, separators=(",", ":"))
-    image = qrcode.make(payload)
-    output = BytesIO()
-    image.save(output, format="PNG")
-    output.seek(0)
+    return reservation, ticket
+
+
+@router.get("/{reserva_id}/qr", summary="Descargar el QR de un boleto pagado")
+def get_ticket_qr(
+    reserva_id: int,
+    db: Session = Depends(get_db),
+    user: Usuario = Depends(get_current_user),
+) -> StreamingResponse:
+    reservation, ticket = _boleto_autorizado(reserva_id, db, user)
+    output = BytesIO(generar_qr_boleto(ticket.codigo))
     return StreamingResponse(
         output,
         media_type="image/png",
@@ -74,8 +73,12 @@ def validate_ticket(
     _user: Usuario = Depends(require_roles(*STAFF_ROLES)),
 ) -> dict[str, object]:
     ticket = db.scalar(select(Boleto).where(Boleto.codigo == payload.codigo))
+    return _validar_abordaje(db, ticket, _user)
+
+
+def _validar_abordaje(db, ticket, user):
     if ticket is None:
-        raise HTTPException(status_code=404, detail="Código de boleto inválido")
+        raise HTTPException(status_code=404, detail="Boleto no encontrado")
     reservation = db.get(Reserva, ticket.reserva_id)
     if (
         reservation is None
@@ -83,7 +86,7 @@ def validate_ticket(
         or not _approved_payment_exists(db, ticket.reserva_id)
     ):
         raise HTTPException(status_code=409, detail="El boleto no está habilitado para abordar")
-    _verificar_personal(db, reservation, _user)
+    _verificar_personal(db, reservation, user)
     if reservation.fecha_viaje != hoy():
         raise HTTPException(409, "El boleto no corresponde a la fecha de hoy")
     if db.scalar(select(Abordaje.id).where(Abordaje.boleto_id == ticket.id)):
@@ -115,8 +118,19 @@ def _verificar_personal(db, reservation, user):
 
 @router.post("/abordar", status_code=201)
 def registrar_abordaje(payload: ValidarBoletoRequest, db: Session = Depends(get_db), user: Usuario = Depends(require_roles(*STAFF_ROLES))):
-    datos = validate_ticket(payload, db, user)
     ticket = db.scalar(select(Boleto).where(Boleto.codigo == payload.codigo))
+    return _registrar_abordaje(db, ticket, user)
+
+
+@router.post("/{reserva_id}/abordar", status_code=201)
+def registrar_desde_manifiesto(reserva_id: int, db: Session = Depends(get_db),
+                               user: Usuario = Depends(require_roles(*STAFF_ROLES))):
+    ticket = db.scalar(select(Boleto).where(Boleto.reserva_id == reserva_id))
+    return _registrar_abordaje(db, ticket, user)
+
+
+def _registrar_abordaje(db, ticket, user):
+    datos = _validar_abordaje(db, ticket, user)
     db.add(Abordaje(boleto_id=ticket.id, registrado_por_id=user.id))
     reserva = db.get(Reserva, ticket.reserva_id)
     notificar(db, reserva.usuario_id, f"Abordaje registrado para reserva {reserva.id}.")
@@ -130,17 +144,11 @@ def registrar_abordaje(payload: ValidarBoletoRequest, db: Session = Depends(get_
 
 @router.get("/{reserva_id}/descarga", response_class=HTMLResponse)
 def descargar_boleto(reserva_id: int, db: Session = Depends(get_db), user: Usuario = Depends(get_current_user)):
-    # Reutiliza los controles de propiedad, pago y confirmación del QR.
-    get_ticket_qr(reserva_id, db, user)
-    r = db.get(Reserva, reserva_id)
-    ticket = db.scalar(select(Boleto).where(Boleto.reserva_id == r.id))
+    r, ticket = _boleto_autorizado(reserva_id, db, user)
     f = db.get(Frecuencia, r.frecuencia_id)
     bus = db.get(Bus, f.bus_id)
     puntos = puntos_ruta(db, db.get(Ruta, f.ruta_id))
-    image = qrcode.make(json.dumps({"tipo": "boleto-interprovincial", "codigo": ticket.codigo}, separators=(",", ":")))
-    out = BytesIO()
-    image.save(out, format="PNG")
-    qr = base64.b64encode(out.getvalue()).decode("ascii")
+    qr = base64.b64encode(generar_qr_boleto(ticket.codigo)).decode("ascii")
     cooperativa = db.get(Cooperativa, bus.cooperativa_id)
     salida = datetime.combine(r.fecha_viaje, f.hora_salida) + timedelta(minutes=puntos[r.origen_orden][1])
     llegada = datetime.combine(r.fecha_viaje, f.hora_salida) + timedelta(minutes=puntos[r.destino_orden][1])

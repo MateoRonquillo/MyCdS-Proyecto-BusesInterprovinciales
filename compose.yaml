@@ -29,6 +29,8 @@ services:
     environment:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-pasajes_app}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-pasajes_db}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Define JWT_SECRET_KEY en .env}
+      GMAIL_SMTP_USER: ${GMAIL_SMTP_USER:-}
+      GMAIL_SMTP_APP_PASSWORD: ${GMAIL_SMTP_APP_PASSWORD:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]

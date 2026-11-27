@@ -1,5 +1,7 @@
+from datetime import datetime, timezone
+
 from sqlalchemy.dialects.mysql import MEDIUMTEXT
-from sqlalchemy import Text, Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, DateTime, UniqueConstraint, func
+from sqlalchemy import Index, Text, Column, Integer, String, Boolean, ForeignKey, Float, Time, Date, DateTime, UniqueConstraint, func
 from app.db.database import Base
 
 class Usuario(Base):
@@ -142,11 +144,13 @@ class OcupacionAsiento(Base):
 
 class Jornada(Base):
     __tablename__ = "jornadas"
-    __table_args__ = (UniqueConstraint("bus_id", "fecha", name="uq_jornada_bus"), UniqueConstraint("frecuencia_id", "fecha", name="uq_jornada_frecuencia"))
+    __table_args__ = (UniqueConstraint("bus_id", "fecha", name="uq_jornada_bus"), UniqueConstraint("frecuencia_id", "fecha", name="uq_jornada_frecuencia"), UniqueConstraint("chofer_id", "fecha", name="uq_jornada_chofer"), UniqueConstraint("ayudante_id", "fecha", name="uq_jornada_ayudante"))
     id = Column(Integer, primary_key=True)
     fecha = Column(Date, nullable=False)
     bus_id = Column(Integer, ForeignKey("buses.id"), nullable=False)
     frecuencia_id = Column(Integer, ForeignKey("frecuencias.id"), nullable=True)
+    chofer_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
+    ayudante_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
 
 class Abordaje(Base):
@@ -184,3 +188,16 @@ class VentaPresencial(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     reserva_id = Column(Integer, ForeignKey("reservas.id"), nullable=False, unique=True)
     pago_id = Column(Integer, ForeignKey("pagos.id"), nullable=False, unique=True)
+
+
+class CorreoBoleto(Base):
+    __tablename__ = 'correos_boletos'
+    __table_args__ = (Index('ix_correos_boletos_pendientes', 'estado', 'disponible_en'),)
+
+    reserva_id = Column(Integer, ForeignKey('reservas.id'), primary_key=True)
+    destinatario = Column(String(254), nullable=False)
+    estado = Column(String(16), nullable=False, server_default='PENDIENTE')
+    intentos = Column(Integer, nullable=False, server_default='0')
+    disponible_en = Column(DateTime, nullable=False,
+                           default=lambda: datetime.now(timezone.utc).replace(tzinfo=None, microsecond=0))
+    reclamo = Column(String(32), nullable=True)
