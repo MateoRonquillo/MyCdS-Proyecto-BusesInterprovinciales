@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="12" failures="0" errors="0" time="0.27775276">
+    <testsuite name="tests/paneles.test.js" timestamp="2026-11-07T21:45:59.177Z" hostname="ultramarine" tests="12" failures="0" errors="0" skipped="0" time="0.27775276">
+        <testcase classname="tests/paneles.test.js" name="Tema y destinos por provincia &gt; aplica, persiste y recupera la preferencia sin depender del servidor" time="0.036541738">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Tema y destinos por provincia &gt; filtra ciudades por provincia y limpia destinos sin conexión al cambiar origen" time="0.015497208">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Navegación por rol &gt; ofrece los accesos correspondientes a admin" time="0.02411059">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Navegación por rol &gt; ofrece los accesos correspondientes a cooperativa" time="0.007768632">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Navegación por rol &gt; ofrece los accesos correspondientes a oficinista" time="0.007979792">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Navegación por rol &gt; ofrece los accesos correspondientes a chofer" time="0.006308615">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Navegación por rol &gt; ofrece los accesos correspondientes a ayudante" time="0.005912084">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Venta presencial &gt; calcula en servidor y reintenta exactamente la misma venta si se pierde la respuesta" time="0.061849246">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Revisión de pagos y acceso &gt; reinicia el respaldo de descuento y el motivo entre pagos distintos" time="0.018620937">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Revisión de pagos y acceso &gt; verifica primero el código y registra el abordaje solo al confirmarlo" time="0.052664641">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="Gestión de catálogos &gt; permite elegir cooperativa y ruta por nombre sin introducir IDs" time="0.038055867">
+        </testcase>
+        <testcase classname="tests/paneles.test.js" name="mantiene contraste de texto AA en los colores base de ambos temas" time="0.000825875">
+        </testcase>
+    </testsuite>
+</testsuites>

@@ -130,11 +130,6 @@ async function confirmar() {
   }
 }
 
-function irAMisReservas() {
-  reserva.limpiar()
-  router.push({ name: 'mis-reservas' })
-}
-
 function terminar() {
   reserva.limpiar()
   router.push({ name: 'inicio' })

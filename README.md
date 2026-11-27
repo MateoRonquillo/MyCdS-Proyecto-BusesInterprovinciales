@@ -30,6 +30,31 @@ Las cuentas internas se provisionan con el mismo comando y `--rol oficinista`,
 `cooperativa`, `chofer` o `ayudante`; los tres últimos requieren `--cooperativa-id`.
 Los clientes pueden registrarse en `/registro`.
 
+## Envío de boletos por Gmail
+
+El pago aprobado genera un correo para la cuenta que realizó la reserva. En una
+venta en ventanilla, el oficinista puede ingresar el correo del pasajero. Cada
+correo incluye los datos del viaje y el QR de abordaje. Si el pasajero prefiere
+no proporcionar correo, el boleto se puede descargar desde el panel de venta.
+
+Activa la verificación en dos pasos y crea una
+[contraseña de aplicación de Google](https://support.google.com/accounts/answer/185833).
+Configura `GMAIL_SMTP_USER` con la dirección completa del remitente y
+`GMAIL_SMTP_APP_PASSWORD` con la contraseña de aplicación en `.env`. Docker Compose
+inyecta ambas variables al backend. Aplica `alembic upgrade head` antes de iniciar
+el backend fuera de Docker. La conexión a `smtp.gmail.com:465` usa TLS.
+
+El envío se registra en la misma transacción que la emisión y se procesa en
+segundo plano. Con las variables vacías, los envíos quedan en cola. Los errores
+transitorios se reintentan hasta cinco intentos y las ventas permanecen confirmadas.
+El sistema descarta entregas de reservas que dejaron de estar confirmadas o cuyo
+viaje ya pasó. Los boletos emitidos antes de esta migración conservan su descarga.
+
+En **Hoja de trabajo**, asigna al chofer y al ayudante de la cooperativa a la salida.
+Desde **Emitir boleto de mi ruta**, ambos pueden cobrar y emitir boletos para
+su frecuencia y fecha asignadas. En el manifiesto, **Registrar ingreso** permite
+confirmar a un pasajero tras verificar su identidad y boleto.
+
 ## Desarrollo y pruebas
 
 ```sh

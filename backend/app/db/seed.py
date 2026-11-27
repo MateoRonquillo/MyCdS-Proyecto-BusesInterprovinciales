@@ -119,8 +119,16 @@ def run_seed(db, password=DEMO_PASSWORD):
             raise ValueError("Una frecuencia demo tiene otra asignación; revisar sin sobrescribir")
         frecuencias.append(frecuencia)
         for delta in range(3):
-            _obtener_o_crear(db, Jornada, {"bus_id": bus.id, "fecha": hoy() + timedelta(days=delta)},
+            fecha = hoy() + timedelta(days=delta)
+            jornada = _obtener_o_crear(db, Jornada, {"bus_id": bus.id, "fecha": fecha},
                 frecuencia_id=frecuencia.id)
+            if numero == 1 and jornada.frecuencia_id == frecuencia.id:
+                for alias, columna in (("chofer", Jornada.chofer_id), ("ayudante", Jornada.ayudante_id)):
+                    usuario_id = usuarios[alias].id
+                    if getattr(jornada, columna.key) is None and not db.scalar(
+                        select(Jornada.id).where(Jornada.fecha == fecha, columna == usuario_id)
+                    ):
+                        setattr(jornada, columna.key, usuario_id)
 
     # Etiquetas persistentes para no duplicar ni restablecer compras ya revisadas.
     escenarios = [

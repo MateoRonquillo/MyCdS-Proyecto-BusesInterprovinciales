@@ -1,7 +1,7 @@
 """Regresiones de los flujos de la release; MySQL opcional con TEST_DATABASE_URL."""
 import base64
 import os
-from datetime import time, timedelta
+from datetime import date, time, timedelta
 from io import BytesIO
 
 import pytest
@@ -12,9 +12,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_current_user
+from app.api.routes import reservas as reservas_route
 from app.db.database import Base, get_db
 from app.main import create_app
-from app.models.core_models import Abordaje, Boleto, Bus, Cooperativa, Frecuencia, Parada, Reserva, Ruta, Usuario
+from app.models.core_models import Abordaje, Boleto, Bus, Cooperativa, CorreoBoleto, Frecuencia, Parada, Reserva, Ruta, Usuario
 from app.services.operacion import hoy
 
 
@@ -92,6 +93,21 @@ def test_tramos_no_superpuestos_y_cancelacion(entorno):
     assert any(r['origen'] == 'Latacunga' and r['destino'] == 'Cuenca' for r in history)
 
 
+def test_cancelacion_usa_fecha_de_ecuador_y_no_zona_del_servidor(entorno, monkeypatch):
+    c, _, _ = entorno
+    reserva = reservar(c)
+    assert reserva.status_code == 201
+
+    class FechaServidor(date):
+        @classmethod
+        def today(cls):
+            return hoy() + timedelta(days=1)
+
+    monkeypatch.setattr(reservas_route, "date", FechaServidor)
+
+    assert c.delete(f"/api/v1/reservas/{reserva.json()['id']}").status_code == 204
+
+
 def test_busqueda_tarifa_y_filtros_reales(entorno):
     c, _, _ = entorno
     params = dict(origen="Latacunga", destino="Cuenca", fecha=str(hoy()), tipo_asiento="VIP", chasis="volvo", tipo_viaje="CON_PARADAS")
@@ -115,6 +131,8 @@ def test_pago_revision_boleto_y_abordaje_unico(entorno):
     assert c.post('/api/v1/pagos', json=body).status_code == 409
     assert c.get(f"/api/v1/boletos/{r['id']}/qr").status_code == 409
     assert c.post(f"/api/v1/pagos/{pago.json()['id']}/aprobar").status_code == 403
+    with sessions() as db:
+        assert db.get(CorreoBoleto, r['id']) is None
     estado['usuario'] = 2
     assert c.get(f"/api/v1/pagos/{pago.json()['id']}/comprobante").json()['comprobante'] == imagen()
     assert c.post(f"/api/v1/pagos/{pago.json()['id']}/aprobar").status_code == 200
@@ -125,6 +143,8 @@ def test_pago_revision_boleto_y_abordaje_unico(entorno):
     assert html.status_code == 200 and 'Quito' in html.text and 'Cuenca' in html.text
     with sessions() as db:
         codigo = db.scalar(select(Boleto.codigo).where(Boleto.reserva_id == r['id']))
+        correo = db.get(CorreoBoleto, r['id'])
+        assert (correo.destinatario, correo.estado) == ('cliente@test.ec', 'PENDIENTE')
     assert c.post('/api/v1/boletos/abordar', json={'codigo':codigo}).status_code == 403
     estado['usuario'] = 3
     assert c.post('/api/v1/boletos/abordar', json={'codigo':codigo}).status_code == 201
